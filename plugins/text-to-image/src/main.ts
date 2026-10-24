@@ -161,6 +161,14 @@ class TextToImage implements Plugin {
         });
       }
     }
+    // The block's title="…" (SPECS 12.5): the outline's label, and the caption here.
+    const title = info.args.named.title?.trim();
+    if (title) {
+      const caption = document.createElement('p');
+      caption.className = 'vx-plugin-block__caption';
+      caption.textContent = title;
+      box.append(caption);
+    }
     if (n === m.drawn && !m.signal.aborted) m.el.replaceChildren(box);
   }
 }

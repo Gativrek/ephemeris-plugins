@@ -47,6 +47,14 @@ qcfL dpH hcbS
 
 In Settings, **Display** switches every block between images and the notation as plain text.
 
+## Naming a combo
+
+Add \`title="…"\` to the first line. The title shows under the combo, and the outline lists the block by it instead of "combo":
+
+\`\`\`combo numpad title="Corner carry"
+j.H > c.M xx 623H
+\`\`\`
+
 ## Profiles
 
 A profile is a folder with a \`profile.json\` file and its images. Profiles are only data, so sharing one with a friend is safe. They live in the library, in \`.ephemeris/plugin-data/text-to-image/profiles/<id>/\`, and travel with your notes.
