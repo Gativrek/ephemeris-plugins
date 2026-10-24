@@ -8,6 +8,8 @@ Text to Image draws notation as images. Write the notation in a \`combo\` block 
 j.H > c.M xx 623H
 \`\`\`
 
+To start a block, type three backticks and \`co\`, then pick **combo** from the suggestions: the whole block is written with the cursor inside, ready for notation.
+
 The blocks on this page use the **Numpad** example profile. If they show "Profile numpad not found", add it in Settings > Plugins > Text to Image > Add Example Profile.
 
 ## Choosing the profile
