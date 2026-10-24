@@ -1,0 +1,10 @@
+{
+  "id": "text-to-image",
+  "name": "Text to Image",
+  "version": "0.1.0",
+  "apiVersion": "^1.0.0",
+  "main": "main.js",
+  "styles": "styles.css",
+  "description": "Renders token notation such as fighting-game combos as images.",
+  "author": "Gativrek"
+}

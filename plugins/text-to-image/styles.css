@@ -1,0 +1,148 @@
+/* Classes are prefixed with the plugin id (SPECS 12.2) and use design tokens only. */
+
+/* ---- Blocks ------------------------------------------------------------- */
+.text-to-image-combo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 4px 0;
+  font-family: var(--font-ui);
+  font-weight: 500;
+  color: var(--ink);
+}
+.text-to-image-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 0.45em;
+  row-gap: 4px;
+  min-height: var(--text-to-image-height, 1.4em);
+}
+.text-to-image-chunk {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  white-space: nowrap;
+}
+.text-to-image-img {
+  height: var(--text-to-image-height, 1.4em);
+  width: auto;
+}
+.text-to-image-glyph {
+  display: inline-block;
+  height: var(--text-to-image-height, 1.4em);
+  aspect-ratio: 1;
+  background-color: currentColor;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+}
+.text-to-image-none {
+  display: inline-block;
+  width: 0;
+}
+.text-to-image-unknown {
+  font-weight: 400;
+  color: var(--muted);
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+}
+.text-to-image-notice {
+  margin: 0 0 6px;
+  font: 400 12px/1.4 var(--font-ui);
+  color: var(--muted);
+}
+.text-to-image-source {
+  padding: 8px 12px;
+  border: 1px solid var(--line-note);
+  border-radius: var(--radius-md);
+  background: var(--code-surface);
+  font: 400 14px/1.75 var(--font-mono);
+  color: var(--note-text);
+  white-space: pre-wrap;
+}
+
+/* ---- Profile manager (Settings > Plugins) -------------------------------- */
+.text-to-image-manager {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font: 400 13px/1.4 var(--font-ui);
+  color: var(--text);
+}
+.text-to-image-manager-title {
+  font: 500 11px/1.4 var(--font-ui);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.text-to-image-manager-hint,
+.text-to-image-manager-status {
+  margin: 0;
+  color: var(--muted);
+}
+.text-to-image-manager-status {
+  color: var(--text);
+}
+.text-to-image-profiles,
+.text-to-image-problems {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.text-to-image-profile {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line);
+}
+.text-to-image-profile-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+.text-to-image-profile-name {
+  font-weight: 500;
+  color: var(--ink);
+}
+.text-to-image-profile-meta {
+  font-size: 12px;
+  color: var(--muted);
+}
+.text-to-image-problem {
+  padding: 2px 0 2px 12px;
+  font-size: 12px;
+  color: var(--text);
+}
+.text-to-image-actions,
+.text-to-image-confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.text-to-image-confirm .text-to-image-manager-status {
+  flex: 1 0 100%;
+}
+.text-to-image-button {
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+  color: var(--ink);
+  font: 500 13px/1 var(--font-ui);
+  cursor: pointer;
+}
+.text-to-image-button:hover {
+  background: var(--surface-hover);
+}
+.text-to-image-button:focus-visible {
+  outline: 2px solid var(--cyan-fill);
+  outline-offset: 2px;
+}
