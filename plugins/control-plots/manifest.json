@@ -1,0 +1,10 @@
+{
+  "id": "control-plots",
+  "name": "Control Plots",
+  "version": "0.1.0",
+  "apiVersion": "^1.0.0",
+  "main": "main.js",
+  "styles": "styles.css",
+  "description": "Bode, step and pole-zero plots from transfer functions.",
+  "author": "Gativrek"
+}

@@ -39,6 +39,12 @@ importers:
         specifier: ^5.0.5
         version: 5.0.5(@types/node@22.20.5)(vite@8.3.5(@types/node@22.20.5)(esbuild@0.27.7))
 
+  plugins/control-plots:
+    devDependencies:
+      '@ephemeris-notes/plugin-api':
+        specifier: link:../../../packages/plugin-api
+        version: link:../../../packages/plugin-api
+
   plugins/text-to-image:
     devDependencies:
       '@ephemeris-notes/plugin-api':

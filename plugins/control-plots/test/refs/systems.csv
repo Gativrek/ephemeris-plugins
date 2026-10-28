@@ -1,0 +1,15 @@
+name,num,den,T
+first,1,1 1,6
+underdamped,4,1 0.40000000000000002 4,30
+overdamped,4,1 5 4,6
+critical,1,1 2 1,6
+withzero,2 1,1 2 10,6
+nonminphase,-1 1,1 3 2,6
+integrator,10,1 2 0,10
+resonance,1,1 0.02 1,600
+third,6,1 6 11 6,6
+biproper,1 2,1 1,6
+negative,-1,1 1,6
+double_int,1,1 0 0,10
+loop,10,1 6 5 0,10
+lead,1 0.20000000000000001 4,1 2 3 1,20

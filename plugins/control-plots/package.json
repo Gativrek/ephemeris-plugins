@@ -1,0 +1,16 @@
+{
+  "name": "@ephemeris-plugins/control-plots",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "description": "Ephemeris plugin: Bode, step and pole-zero plots from transfer functions.",
+  "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "tsc -p tsconfig.json && tsc -p test/tsconfig.json",
+    "refs": "matlab -batch \"run('test/make_refs.m')\""
+  },
+  "devDependencies": {
+    "@ephemeris-notes/plugin-api": "link:../../../packages/plugin-api"
+  }
+}
