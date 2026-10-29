@@ -12,5 +12,8 @@
   },
   "devDependencies": {
     "@ephemeris-notes/plugin-api": "link:../../../packages/plugin-api"
+  },
+  "dependencies": {
+    "@ephemeris-plugins/chart": "workspace:*"
   }
 }

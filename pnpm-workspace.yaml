@@ -1,5 +1,6 @@
 packages:
   - plugins/*
+  - packages/*
 
 onlyBuiltDependencies:
   - esbuild

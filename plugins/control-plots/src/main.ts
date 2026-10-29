@@ -4,10 +4,9 @@
  * error state with the message (SPECS 12.8).
  */
 import type { BlockInfo, BlockView, Plugin, PluginContext, PluginFactory } from '@ephemeris-notes/plugin-api';
-import type { Figure } from './chart';
+import { html, setPrefix, type Figure } from '@ephemeris-plugins/chart';
 import { HELP } from './help';
 import { parseBlock, type Kind } from './parse';
-import { html } from './svg';
 import { renderBode, renderPzmap, renderStep } from './views';
 
 const RENDER: Record<Kind, (el: HTMLElement, block: ReturnType<typeof parseBlock>) => Figure> = {
@@ -42,6 +41,7 @@ function draw(el: HTMLElement, kind: Kind, info: BlockInfo): Figure {
 
 class ControlPlots implements Plugin {
   onload(ctx: PluginContext): void {
+    setPrefix('control-plots');
     for (const kind of Object.keys(RENDER) as Kind[]) {
       ctx.blocks.register(kind, {
         starter: STARTER[kind],

@@ -1,0 +1,16 @@
+/* Classes are prefixed with the plugin id (SPECS 12.2) and use design tokens only. The
+   plot frame's styles come from @ephemeris-plugins/chart and are added at build time. */
+.data-plot-block {
+  /* Takes the note's width without adding any, so a plot never holds the column open. */
+  width: 0;
+  min-width: 100%;
+  padding: 4px 0;
+  font-family: var(--font-ui);
+  color: var(--text);
+}
+.data-plot-problem {
+  margin: 0;
+  padding: 8px 0;
+  font: 500 13px/1.5 var(--font-ui);
+  color: var(--text);
+}

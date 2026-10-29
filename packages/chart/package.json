@@ -1,0 +1,15 @@
+{
+  "name": "@ephemeris-plugins/chart",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "description": "Shared plot frame for Ephemeris plugins: scales, panels, legend, end labels, hover. Bundled into each plugin.",
+  "exports": {
+    ".": "./src/index.ts",
+    "./chart.css": "./src/chart.css"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  }
+}

@@ -1,8 +1,10 @@
-// Builds the installable plugin folder `dist/` (manifest.json, main.js, styles.css).
+// Builds the installable plugin folder `dist/` (manifest.json, main.js, styles.css with the shared
+// plot frame's styles).
 import { copyFileSync, mkdirSync, rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { build } from 'esbuild';
+import { writeStyles } from '../../packages/chart/build-css.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const out = join(here, 'dist');
@@ -20,5 +22,5 @@ await build({
   logLevel: 'warning',
 });
 copyFileSync(join(here, 'manifest.json'), join(out, 'manifest.json'));
-copyFileSync(join(here, 'styles.css'), join(out, 'styles.css'));
+writeStyles('control-plots', join(here, 'styles.css'), join(out, 'styles.css'));
 console.log(`control-plots built to ${out}`);

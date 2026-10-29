@@ -7,8 +7,11 @@ Plugins for [Ephemeris](https://github.com/Gativrek/ephemeris-notes), the deskto
 | [Text to Image](plugins/text-to-image) | ` ```combo ` | Draws token notation, such as fighting-game combos, as images through data-only profiles. |
 | [Control Plots](plugins/control-plots) | ` ```bode ` ` ```step ` ` ```pzmap ` | Bode, step and pole-zero plots from transfer functions, checked against MATLAB. |
 | [Diagrams](plugins/diagrams) | ` ```mermaid ` | Mermaid flowcharts and control block diagrams, with a drag-and-drop canvas. |
+| [Data Plot](plugins/data-plot) | ` ```plot ` | Line, scatter and step plots of CSV files in the Vault, redrawn when the file changes. |
 
 Plugins use only the typed plugin API, `@ephemeris-notes/plugin-api`. They run in the app's renderer with no Node access. Plugins are trusted code: install only plugins you trust.
+
+Control Plots and Data Plot share their plot frame (scales, panels, legend, hover and its CSS) through `packages/chart`, a workspace package each of them bundles; it sets each plugin's own class prefix.
 
 ## Development
 
@@ -61,6 +64,19 @@ flowchart LR
 ````
 
 Any Mermaid diagram renders, through Mermaid (11.17, loaded on first use from its own chunks, so a library without diagrams does not pay for it). A flowchart in the editable subset (rectangles, circles, diamonds, summing junctions, branch points, text labels, `-->` and `---` with labels, math labels in `$$…$$`) can be drawn on a canvas from the block's Edit button. The canvas saves node positions as `%% @pos ID x y` comments, and once every node has one, the plugin draws the diagram itself, with horizontal and vertical edges and feedback paths routed underneath. Other apps ignore the comments and lay out the same graph. The help page, Settings > Help > Mermaid quick tutorial, covers the syntax and the canvas.
+
+## Data Plot
+
+````
+```plot
+file: data/run3.csv
+x: t
+y: [roll, pitch, yaw]
+xlabel: Time (s)
+```
+````
+
+The file is relative to the note (or to the Vault root with a leading `/`); small tables can follow a `---` line in the block instead. The delimiter and decimal commas are detected, a header-less file (MATLAB `writematrix`) is read by column number, and lines longer than 5,000 samples are thinned with LTTB for drawing while hover reads every sample. The help page lists the options.
 
 ## License
 

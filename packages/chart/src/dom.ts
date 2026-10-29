@@ -1,6 +1,14 @@
-/** DOM helpers. Classes are prefixed with the plugin id (SPECS 12.2). */
+/**
+ * DOM helpers. Classes are prefixed with the plugin id (SPECS 12.2): each plugin bundles
+ * its own copy of this package and calls setPrefix() once, before drawing.
+ */
 
-export const ID = 'control-plots';
+let prefix = 'chart';
+
+export function setPrefix(id: string): void {
+  prefix = id;
+}
+export const getPrefix = () => prefix;
 const NS = 'http://www.w3.org/2000/svg';
 
 export function svg<K extends keyof SVGElementTagNameMap>(
@@ -15,7 +23,7 @@ export function svg<K extends keyof SVGElementTagNameMap>(
       'class',
       cls
         .split(' ')
-        .map((c) => `${ID}-${c}`)
+        .map((c) => `${prefix}-${c}`)
         .join(' '),
     );
   return e;
@@ -29,7 +37,7 @@ export function html<K extends keyof HTMLElementTagNameMap>(
   const e = document.createElement(tag);
   e.className = cls
     .split(' ')
-    .map((c) => `${ID}-${c}`)
+    .map((c) => `${prefix}-${c}`)
     .join(' ');
   if (text !== undefined) e.textContent = text;
   return e;
@@ -60,6 +68,17 @@ export function linePath(xs: number[], ys: number[]): string {
     }
     d += `${open ? 'L' : 'M'}${x.toFixed(2)},${y.toFixed(2)}`;
     open = true;
+  }
+  return d;
+}
+
+/** Scatter points: a zero-length segment per sample, drawn as a dot by a round line cap. */
+export function pointsPath(xs: number[], ys: number[]): string {
+  let d = '';
+  for (let i = 0; i < xs.length; i++) {
+    const x = xs[i]!;
+    const y = ys[i]!;
+    if (Number.isFinite(x) && Number.isFinite(y)) d += `M${x.toFixed(2)},${y.toFixed(2)}h0`;
   }
   return d;
 }

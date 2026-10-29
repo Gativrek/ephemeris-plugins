@@ -1,13 +1,7 @@
-/* Classes are prefixed with the plugin id (SPECS 12.2) and use design tokens only.
-   Series colours are the design system's viz-1 … viz-6; the fallbacks are the same
-   values, for apps built before the palette existed. */
+/* Classes are prefixed with the plugin id (SPECS 12.2) and use design tokens only. The
+   plot frame's styles come from @ephemeris-plugins/chart and are added at build time;
+   these are the parts only Control Plots draws. */
 .control-plots-block {
-  --control-plots-1: var(--viz-1, #2a78d6);
-  --control-plots-2: var(--viz-2, #eb6834);
-  --control-plots-3: var(--viz-3, #1baf7a);
-  --control-plots-4: var(--viz-4, #6250d6);
-  --control-plots-5: var(--viz-5, #008300);
-  --control-plots-6: var(--viz-6, #e87ba4);
   /* Takes the note's width without adding any: a plot drawn wide must not hold the
      note column open when the window narrows, or the redraw never happens. */
   width: 0;
@@ -16,129 +10,8 @@
   font-family: var(--font-ui);
   color: var(--text);
 }
-:root[data-theme='dark'] .control-plots-block {
-  --control-plots-1: var(--viz-1, #3987e5);
-  --control-plots-2: var(--viz-2, #d95926);
-  --control-plots-3: var(--viz-3, #199e70);
-  --control-plots-4: var(--viz-4, #9085e9);
-  --control-plots-6: var(--viz-6, #d55181);
-}
 
-.control-plots-figure {
-  position: relative;
-}
-.control-plots-figure svg {
-  display: block;
-  overflow: visible;
-}
-.control-plots-title {
-  margin: 0 0 6px;
-  font: 600 14px/1.4 var(--font-ui);
-  color: var(--ink);
-  text-align: center;
-}
-
-/* ---- Legend and keys ---------------------------------------------------------- */
-.control-plots-legend {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 4px 16px;
-  margin: 0 0 6px;
-  font: 400 12px/1.4 var(--font-ui);
-  color: var(--text);
-}
-.control-plots-legend-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-.control-plots-key {
-  display: inline-block;
-  width: 14px;
-  height: 2px;
-  border-radius: 1px;
-  background: currentColor;
-}
-.control-plots-key.control-plots-s1 {
-  color: var(--control-plots-1);
-}
-.control-plots-key.control-plots-s2 {
-  color: var(--control-plots-2);
-}
-.control-plots-key.control-plots-s3 {
-  color: var(--control-plots-3);
-}
-.control-plots-key.control-plots-s4 {
-  color: var(--control-plots-4);
-}
-.control-plots-key.control-plots-s5 {
-  color: var(--control-plots-5);
-}
-.control-plots-key.control-plots-s6 {
-  color: var(--control-plots-6);
-}
-
-/* ---- Axes and grid ------------------------------------------------------------ */
-.control-plots-grid {
-  stroke: var(--line-note);
-  stroke-width: 1;
-}
-.control-plots-grid-minor {
-  stroke: var(--line-note);
-  stroke-width: 1;
-  opacity: 0.45;
-}
-.control-plots-frame {
-  fill: none;
-  stroke: var(--line);
-  stroke-width: 1;
-}
-.control-plots-ref {
-  stroke: var(--muted);
-  stroke-width: 1;
-  opacity: 0.6;
-}
-.control-plots-tick {
-  font: 400 11px var(--font-ui);
-  fill: var(--muted);
-  font-variant-numeric: tabular-nums;
-}
-.control-plots-axis-label {
-  font: 400 11px var(--font-ui);
-  fill: var(--muted);
-}
-.control-plots-end-label {
-  font: 500 12px var(--font-ui);
-  fill: var(--text);
-}
-
-/* ---- Series ------------------------------------------------------------------- */
-.control-plots-line {
-  fill: none;
-  stroke-width: 2;
-  stroke-linejoin: round;
-  stroke-linecap: round;
-}
-.control-plots-s1 {
-  --control-plots-c: var(--control-plots-1);
-}
-.control-plots-s2 {
-  --control-plots-c: var(--control-plots-2);
-}
-.control-plots-s3 {
-  --control-plots-c: var(--control-plots-3);
-}
-.control-plots-s4 {
-  --control-plots-c: var(--control-plots-4);
-}
-.control-plots-s5 {
-  --control-plots-c: var(--control-plots-5);
-}
-.control-plots-s6 {
-  --control-plots-c: var(--control-plots-6);
-}
-.control-plots-line,
+/* ---- Margins and the pole-zero map -------------------------------------------- */
 .control-plots-margin-line,
 .control-plots-marks .control-plots-pole,
 .control-plots-marks .control-plots-zero {
@@ -148,11 +21,6 @@
   stroke: var(--control-plots-c);
   stroke-width: 1.5;
 }
-.control-plots-dot {
-  fill: var(--control-plots-c);
-  stroke: var(--surface);
-  stroke-width: 2;
-}
 .control-plots-pole {
   fill: none;
   stroke-width: 2;
@@ -161,73 +29,4 @@
 .control-plots-zero {
   fill: var(--surface);
   stroke-width: 2;
-}
-
-/* ---- Hover -------------------------------------------------------------------- */
-.control-plots-hit {
-  fill: transparent;
-  cursor: crosshair;
-}
-.control-plots-crosshair {
-  stroke: var(--muted);
-  stroke-width: 1;
-}
-.control-plots-hover {
-  pointer-events: none;
-}
-.control-plots-tooltip {
-  position: absolute;
-  z-index: 2;
-  min-width: 140px;
-  padding: 6px 8px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-md);
-  background: var(--surface-raised);
-  font: 400 12px/1.5 var(--font-ui);
-  color: var(--text);
-  pointer-events: none;
-}
-.control-plots-tooltip[hidden] {
-  display: none;
-}
-.control-plots-tooltip-head {
-  margin-bottom: 2px;
-  color: var(--muted);
-  font-variant-numeric: tabular-nums;
-}
-.control-plots-tooltip-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.control-plots-tooltip-name {
-  font-weight: 500;
-  color: var(--ink);
-}
-.control-plots-tooltip-value {
-  margin-left: auto;
-  padding-left: 12px;
-  font-variant-numeric: tabular-nums;
-}
-
-/* ---- Notes under the plot ----------------------------------------------------- */
-.control-plots-notes {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  margin-top: 6px;
-  font: 400 12px/1.5 var(--font-ui);
-  color: var(--muted);
-  font-variant-numeric: tabular-nums;
-}
-.control-plots-note,
-.control-plots-warning {
-  margin: 0;
-}
-.control-plots-warning {
-  color: var(--text);
-  font-weight: 500;
-}
-.control-plots-table-row {
-  color: var(--muted);
 }

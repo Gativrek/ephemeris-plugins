@@ -11,10 +11,18 @@ import {
   stepResponse,
   type Analysis,
 } from './analysis';
-import { Figure, MARGIN, type Panel, type Series } from './chart';
+import {
+  Figure,
+  fixed,
+  fmt,
+  linear,
+  log,
+  MARGIN,
+  svg,
+  type Panel,
+  type Series,
+} from '@ephemeris-plugins/chart';
 import { BlockError, type Block } from './parse';
-import { fixed, fmt, linear, log } from './scale';
-import { svg } from './svg';
 import { degree, type Complex } from './poly';
 
 const BODE_POINTS = 600;

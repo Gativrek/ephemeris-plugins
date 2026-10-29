@@ -1,11 +1,11 @@
 /**
- * The plot frame shared by the three views: panels with grid, axes and 2px lines;
+ * The plot frame shared by the plot plugins: panels with grid, axes and 2px lines;
  * a legend for two or more series and end labels for up to four (each series named in
- * text, SPECS 13.3); a crosshair with a tooltip on hover. Series colours come from
+ * text, SPECS 13.3 and 13.4); a crosshair with a tooltip on hover. Series colours come from
  * classes (s1 … s6) over the design system's viz-1 … viz-6.
  */
-import { fmt, tickLabel, type Scale } from './scale';
-import { html, ID, label, linePath, svg } from './svg';
+import { getPrefix, html, label, linePath, pointsPath, svg } from './dom';
+import { tickLabel, type Scale } from './scale';
 
 export interface Series {
   name: string;
@@ -13,6 +13,8 @@ export interface Series {
   slot: number;
   xs: number[];
   ys: number[];
+  /** Points draw a round dot per sample instead of a line (scatter plots). */
+  mark?: 'line' | 'points';
 }
 
 export interface Panel {
@@ -112,13 +114,17 @@ export class Figure {
     yl.setAttribute('transform', `translate(14 ${p.top + p.height / 2}) rotate(-90)`);
     g.append(yl);
 
-    const clip = `${ID}-clip-${++clipSeq}`;
+    const clip = `${getPrefix()}-clip-${++clipSeq}`;
     const cp = svg('clipPath', { id: clip });
     cp.append(svg('rect', { x: left, y: p.top, width: right - left, height: p.height }));
     g.append(cp);
     const lines = svg('g', { 'clip-path': `url(#${clip})` });
     for (const s of p.series)
-      lines.append(svg('path', { d: linePath(s.xs.map(p.x), s.ys.map(p.y)) }, `line s${s.slot}`));
+      lines.append(
+        s.mark === 'points'
+          ? svg('path', { d: pointsPath(s.xs.map(p.x), s.ys.map(p.y)) }, `points s${s.slot}`)
+          : svg('path', { d: linePath(s.xs.map(p.x), s.ys.map(p.y)) }, `line s${s.slot}`),
+      );
     g.append(lines);
     this.endLabels(g, p);
     this.svg.append(g);
@@ -128,6 +134,7 @@ export class Figure {
   /** Labels at each line's end, when they do not collide (else the legend carries identity). */
   private endLabels(g: SVGGElement, p: Panel): void {
     if (p.series.length < 2 || p.series.length > END_LABELS_MAX) return;
+    if (p.series.some((s) => s.mark === 'points')) return;
     const ends = p.series.map((s) => {
       let i = s.ys.length - 1;
       while (i > 0 && !Number.isFinite(s.ys[i]!)) i--;
@@ -141,12 +148,14 @@ export class Figure {
 
   /**
    * Hover over the panels: a vertical crosshair, a dot on each line, and a tooltip
-   * with the rows `describe` returns for the nearest sample.
+   * with the rows `describe` returns for the nearest sample. `ysOf` gives a series' full
+   * data when the drawn line is thinned out, so the dot sits on the real sample.
    */
   crosshair(
     panels: Panel[],
     describe: (i: number) => { head: string; rows: Array<{ slot: number; name: string; value: string }> },
     xs: number[],
+    ysOf: (s: Series) => number[] = (s) => s.ys,
   ): void {
     const top = Math.min(...panels.map((p) => p.top));
     const bottom = Math.max(...panels.map((p) => p.top + p.height));
@@ -159,6 +168,7 @@ export class Figure {
       p.series.map((s) => ({ p, s, dot: svg('circle', { r: 4 }, `dot s${s.slot}`) })),
     );
     for (const d of dots) layer.append(d.dot);
+    const values = new Map(dots.map((d) => [d.s, ysOf(d.s)]));
     const hit = svg(
       'rect',
       { x: MARGIN.left, y: top, width: this.right - MARGIN.left, height: bottom - top },
@@ -166,16 +176,15 @@ export class Figure {
     );
     this.svg.append(layer, hit);
     const px = xs.map(x);
+    const sorted = px.every((v, k) => Number.isFinite(v) && (k === 0 || v >= px[k - 1]!));
     const move = (e: PointerEvent) => {
       const r = this.svg.getBoundingClientRect();
-      const mx = e.clientX - r.left;
-      let i = 0;
-      for (let k = 1; k < px.length; k++) if (Math.abs(px[k]! - mx) < Math.abs(px[i]! - mx)) i = k;
+      const i = nearest(px, e.clientX - r.left, sorted);
       const cx = px[i]!;
       vline.setAttribute('x1', String(cx));
       vline.setAttribute('x2', String(cx));
       for (const d of dots) {
-        const v = d.s.ys[i]!;
+        const v = values.get(d.s)![i]!;
         const cy = d.p.y(v);
         const visible = Number.isFinite(v) && cy >= d.p.top && cy <= d.p.top + d.p.height;
         d.dot.style.display = visible ? '' : 'none';
@@ -234,4 +243,29 @@ export class Figure {
   }
 }
 
-export { fmt };
+/** The index of the value nearest `v`: a binary search when `px` ascends, else a scan. */
+export function nearest(px: number[], v: number, sorted: boolean): number {
+  let best = 0;
+  let dist = Infinity;
+  const consider = (k: number) => {
+    const d = Math.abs(px[k]! - v);
+    if (d < dist) {
+      dist = d;
+      best = k;
+    }
+  };
+  if (!sorted) {
+    for (let k = 0; k < px.length; k++) consider(k);
+    return best;
+  }
+  let lo = 0;
+  let hi = px.length - 1;
+  while (hi - lo > 1) {
+    const mid = (lo + hi) >> 1;
+    if (px[mid]! < v) lo = mid;
+    else hi = mid;
+  }
+  consider(lo);
+  consider(hi);
+  return best;
+}

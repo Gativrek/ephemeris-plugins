@@ -1,0 +1,10 @@
+{
+  "id": "data-plot",
+  "name": "Data Plot",
+  "version": "0.1.0",
+  "apiVersion": "^1.0.0",
+  "main": "main.js",
+  "styles": "styles.css",
+  "description": "Line, scatter and step plots of CSV files in the Vault.",
+  "author": "Gativrek"
+}
