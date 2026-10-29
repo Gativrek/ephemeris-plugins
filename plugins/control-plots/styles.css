@@ -8,6 +8,10 @@
   --control-plots-4: var(--viz-4, #6250d6);
   --control-plots-5: var(--viz-5, #008300);
   --control-plots-6: var(--viz-6, #e87ba4);
+  /* Takes the note's width without adding any: a plot drawn wide must not hold the
+     note column open when the window narrows, or the redraw never happens. */
+  width: 0;
+  min-width: 100%;
   padding: 4px 0;
   font-family: var(--font-ui);
   color: var(--text);
