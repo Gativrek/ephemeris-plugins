@@ -4,8 +4,10 @@
  * undo step in the note). A diagram outside the editable subset opens read-only.
  */
 import type { BlockHost, BlockInfo, OverlayHandle, PluginContext } from '@ephemeris-notes/plugin-api';
+import { nodeSize, pathOf, routeEdges } from './geometry';
+import { nearestInDirection, nextFreeSpot, type Direction } from './keyboard';
 import { layeredLayout, normalize, straighten } from './layout';
-import { loadMath, makeLabels, needsMath } from './labels';
+import { loadMath, makeLabels, mathLoaded, needsMath } from './labels';
 import { positionsFromSvg, renderMermaid } from './mermaid';
 import { drawDiagram, svgEl, type Drawing } from './render';
 import { isSign, parseDiagram, serializeDiagram, type Diagram, type DiagramNode, type Shape } from './syntax';
@@ -23,6 +25,62 @@ const TOOLS: Array<{ tool: Tool; label: string; key: string }> = [
   { tool: 'branch', label: 'Branch', key: 'b' },
   { tool: 'text', label: 'Text', key: 't' },
   { tool: 'connect', label: 'Connect', key: 'l' },
+];
+const ARROWS: Record<string, Direction> = {
+  ArrowLeft: 'left',
+  ArrowRight: 'right',
+  ArrowUp: 'up',
+  ArrowDown: 'down',
+};
+const SHAPE_NAME: Record<Shape, string> = {
+  rect: 'rectangle',
+  circle: 'circle',
+  diamond: 'diamond',
+  junction: 'junction',
+  branch: 'branch point',
+  text: 'text label',
+};
+/** The shortcut list behind the Keys button and `?`. */
+const KEYS: Array<{ group: string; keys: Array<[string, string]> }> = [
+  {
+    group: 'Tools',
+    keys: [
+      ['V', 'Select'],
+      ['R  C  D', 'Rectangle, circle, diamond'],
+      ['J  B  T', 'Junction, branch point, text'],
+      ['L', 'Connect (with a node selected: connect from it)'],
+      ['Enter', 'With a shape tool: place it next to the selection, connected'],
+    ],
+  },
+  {
+    group: 'Selection',
+    keys: [
+      ['Tab  Shift+Tab', 'Next or previous node, then edges'],
+      ['Alt+Arrows', 'The nearest node in that direction'],
+      ['Arrows', 'Move the selected node (Shift: further)'],
+      ['Enter', 'Rename; on a junction sign, flip it'],
+      ['Delete', 'Remove the selection'],
+      ['Esc', 'Clear the selection or the tool'],
+    ],
+  },
+  {
+    group: 'Connecting from the keyboard',
+    keys: [
+      ['Arrows  Tab', 'Choose the target'],
+      ['Enter', 'Connect'],
+      ['Esc', 'Cancel'],
+    ],
+  },
+  {
+    group: 'View and history',
+    keys: [
+      ['Wheel', 'Zoom'],
+      ['Drag  Space+drag', 'Pan'],
+      ['G', 'Snap to the grid on or off'],
+      ['Ctrl+Z  Ctrl+Shift+Z', 'Undo, redo'],
+      ['?', 'Show or hide this list'],
+    ],
+  },
 ];
 const DEFAULT_LABEL: Partial<Record<Shape, string>> = {
   rect: 'Block',
@@ -134,6 +192,10 @@ class CanvasEditor {
   private closing: ((ok: boolean) => void) | null = null;
   /** Set once the changes are applied, so closing does not ask again. */
   private forceClose = false;
+  /** Connecting from the keyboard: the source and the chosen target. */
+  private linking: { from: string; to: string | null } | null = null;
+  private keysPanel!: HTMLElement;
+  private keysBtn!: HTMLButtonElement;
 
   constructor(
     private d: Diagram,
@@ -205,9 +267,13 @@ class CanvasEditor {
     tools.setAttribute('aria-label', 'Tools');
     for (const t of TOOLS) {
       const b = el('button', 'tool', t.label);
+      b.append(el('kbd', 'kbd', t.key.toUpperCase()));
       b.type = 'button';
       b.title = `${t.label} (${t.key.toUpperCase()})`;
-      b.addEventListener('click', () => this.setTool(t.tool));
+      b.addEventListener('click', () => {
+        this.setTool(t.tool);
+        this.root.focus();
+      });
       this.toolButtons.set(t.tool, b);
       tools.append(b);
     }
@@ -224,6 +290,8 @@ class CanvasEditor {
       this.snap = !this.snap;
       this.redraw();
     });
+    this.keysBtn = button('Keys', 'Keyboard shortcuts (?)', () => this.toggleKeys());
+    this.keysBtn.append(el('kbd', 'kbd', '?'));
     const spacer = el('div', 'canvas-spacer');
     const cancel = button('Cancel', 'Close without applying', () => this.overlay?.close());
     const done = button(
@@ -232,7 +300,21 @@ class CanvasEditor {
       () => void this.apply(),
       'vx-btn vx-btn--small vx-btn--primary',
     );
-    bar.append(tools, this.undoBtn, this.redoBtn, this.snapBtn, spacer, cancel, done);
+    bar.append(tools, this.undoBtn, this.redoBtn, this.snapBtn, this.keysBtn, spacer, cancel, done);
+
+    this.keysPanel = el('div', 'canvas-keys');
+    this.keysPanel.hidden = true;
+    this.keysPanel.setAttribute('aria-label', 'Keyboard shortcuts');
+    for (const g of KEYS) {
+      this.keysPanel.append(el('p', 'canvas-keys-group', g.group));
+      const list = el('dl', 'canvas-keys-list');
+      for (const [k, what] of g.keys) {
+        const dt = el('dt', 'canvas-keys-key');
+        for (const part of k.split('  ')) dt.append(el('kbd', 'kbd', part));
+        list.append(dt, el('dd', 'canvas-keys-what', what));
+      }
+      this.keysPanel.append(list);
+    }
 
     this.stage = svgEl('svg', {}, 'stage');
     const defs = svgEl('defs');
@@ -250,16 +332,46 @@ class CanvasEditor {
     this.preview = svgEl('path', { d: '' }, 'preview');
 
     this.status = el('div', 'canvas-status');
-    this.root.append(bar, this.stage, this.status);
+    this.status.setAttribute('aria-live', 'polite');
+    this.root.append(bar, this.stage, this.keysPanel, this.status);
     root.append(this.root);
 
     this.bind();
+    // The overlay closes on Esc from a window capture listener. This one is added first
+    // (the canvas mounts before the overlay's listener), so Esc cancels what is in
+    // progress on the canvas and only closes the overlay when there is nothing left.
+    const onEscape = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape' || !this.root.contains(document.activeElement)) return;
+      if (!this.cancelSomething()) return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+    };
+    window.addEventListener('keydown', onEscape, true);
     requestAnimationFrame(() => {
       this.redraw();
       this.fit();
       this.root.focus();
     });
-    return () => this.editing?.remove();
+    return () => {
+      window.removeEventListener('keydown', onEscape, true);
+      this.editing?.remove();
+    };
+  }
+
+  /** Esc: the innermost thing in progress, if any. True when something was cancelled. */
+  private cancelSomething(): boolean {
+    if (this.root.querySelector('.diagrams-ask')) return false;
+    if (this.editing) this.finishEdit(false);
+    else if (this.linking) {
+      this.linking = null;
+      this.redraw();
+    } else if (!this.keysPanel.hidden) this.toggleKeys(false);
+    else if (this.tool !== 'select' || this.sel) {
+      this.tool = 'select';
+      this.sel = null;
+      this.redraw();
+    } else return false;
+    return true;
   }
 
   private setTool(t: Tool): void {
@@ -274,15 +386,79 @@ class CanvasEditor {
     this.snapBtn.setAttribute('aria-pressed', String(this.snap));
     this.overlay?.setDirty(this.dirty);
     this.stage.dataset.tool = this.tool;
-    const hint: Record<string, string> = {
-      select: 'Drag to move · drag a handle to connect · double-click to rename · Delete removes',
-      connect: 'Drag from one node to another',
+    this.keysBtn.setAttribute('aria-pressed', String(!this.keysPanel.hidden));
+    this.drawStatus();
+  }
+
+  /** What can be done now, with the keys that do it. */
+  private drawStatus(): void {
+    const parts: Array<[string, string] | string> = [];
+    const name = (id: string) => {
+      const n = this.node(id);
+      if (n?.shape === 'junction' || n?.shape === 'branch') return `${SHAPE_NAME[n.shape]} ${id}`;
+      return n?.label || id;
     };
-    this.status.textContent = hint[this.tool] ?? 'Click to place';
+    if (this.linking) {
+      const to = this.linking.to;
+      parts.push(`Connect ${name(this.linking.from)} to ${to ? name(to) : '…'}`);
+      parts.push(['Arrows  Tab', 'choose'], ['Enter', 'connect'], ['Esc', 'cancel']);
+    } else if (this.tool === 'connect') {
+      parts.push('Drag from one node to another', ['Esc', 'back to Select']);
+    } else if (this.tool !== 'select') {
+      const what = SHAPE_NAME[this.tool];
+      parts.push(`Click to place a ${what}`);
+      if (this.sel?.kind === 'node') parts.push(['Enter', `place it after ${name(this.sel.id)}, connected`]);
+      else parts.push(['Enter', 'place it in the middle']);
+      parts.push(['Esc', 'back to Select']);
+    } else if (this.sel?.kind === 'node') {
+      const n = this.node(this.sel.id);
+      parts.push(`${name(this.sel.id)} selected`);
+      if (n && n.shape !== 'junction' && n.shape !== 'branch') parts.push(['Enter', 'rename']);
+      parts.push(
+        ['L', 'connect'],
+        ['R…  Enter', 'add one after it'],
+        ['Arrows', 'move'],
+        ['Alt+Arrows', 'select nearby'],
+      );
+      parts.push(['Tab', 'next'], ['Delete', 'remove']);
+    } else if (this.sel?.kind === 'edge') {
+      const e = this.d.edges[this.sel.index];
+      parts.push(e ? `Edge ${name(e.from)} → ${name(e.to)} selected` : 'Edge selected');
+      parts.push(
+        ['Enter', e && isSign(this.d, e) ? 'flip the sign' : 'rename'],
+        ['Tab', 'next'],
+        ['Delete', 'remove'],
+      );
+    } else {
+      parts.push(
+        ['V R C D J B T L', 'tools'],
+        ['Tab', 'select a node'],
+        ['Ctrl+Z', 'undo'],
+        ['?', 'all keys'],
+      );
+    }
+    this.status.replaceChildren();
+    for (const p of parts) {
+      const item = el('span', 'canvas-hint');
+      if (typeof p === 'string') item.textContent = p;
+      else {
+        for (const k of p[0].split('  ')) item.append(el('kbd', 'kbd', k));
+        item.append(` ${p[1]}`);
+      }
+      this.status.append(item);
+    }
+  }
+
+  private toggleKeys(show = this.keysPanel.hidden): void {
+    this.keysPanel.hidden = !show;
+    this.redrawChrome();
   }
 
   /** Redraws the diagram, the selection and its handles. */
   private redraw(): void {
+    // Math typed into a new label needs KaTeX: draw it as text now, and again once loaded.
+    const labels = [...this.d.nodes.map((n) => n.label), ...this.d.edges.map((e) => e.label)];
+    if (needsMath(labels) && !mathLoaded()) void loadMath().then(() => this.redraw());
     this.drawing = drawDiagram(this.d, makeLabels());
     const parts = [...this.drawing.svg.childNodes];
     this.content.replaceChildren(
@@ -313,6 +489,17 @@ class CanvasEditor {
       for (const g of this.content.querySelectorAll(`[data-edge="${this.sel.index}"]`))
         g.classList.add('diagrams-is-selected');
     }
+    // Connecting from the keyboard: the chosen target, and the route the edge would take.
+    const to = this.linking?.to;
+    let preview = '';
+    if (this.linking && to) {
+      this.content.querySelector(`[data-id="${to}"]`)?.classList.add('diagrams-is-target');
+      const edge = { from: this.linking.from, to, label: '', arrow: true };
+      const routes = routeEdges({ ...this.d, edges: [...this.d.edges, edge] }, this.drawing.boxes);
+      const r = routes.find((x) => x.edge === edge);
+      if (r) preview = pathOf(r.points);
+    }
+    this.preview.setAttribute('d', preview);
     this.content.append(this.preview);
     this.applyView();
     this.redrawChrome();
@@ -469,37 +656,182 @@ class CanvasEditor {
     );
 
     this.root.addEventListener('keydown', (e) => {
-      if (this.editing) return;
-      const mod = e.ctrlKey || e.metaKey;
-      const key = e.key.toLowerCase();
-      if (mod && key === 'z') this.restore(e.shiftKey ? this.at + 1 : this.at - 1);
-      else if (mod && key === 'y') this.restore(this.at + 1);
-      else if (e.key === 'Delete' || e.key === 'Backspace') this.deleteSelection();
-      else if (e.key === ' ') this.space = true;
-      else if (e.key === 'Escape' && (this.tool !== 'select' || this.sel)) {
-        this.tool = 'select';
-        this.sel = null;
-        this.redraw();
-      } else if (e.key === 'Enter' && this.sel?.kind === 'node') this.editNodeLabel(this.sel.id);
-      else if (e.key.startsWith('Arrow') && this.sel?.kind === 'node')
-        this.nudge(e.key, e.shiftKey ? GRID * 2 : this.snap ? GRID : 1);
-      else if (!mod && key === 'g') {
-        this.snap = !this.snap;
-        this.redrawChrome();
-      } else if (!mod && !e.altKey) {
-        const t = TOOLS.find((x) => x.key === key);
-        if (!t) return;
-        this.setTool(t.tool);
-      } else return;
-      e.preventDefault();
-      e.stopPropagation();
+      // A focused button keeps Enter and Space; every other key is a canvas shortcut.
+      const onButton = (e.target as Element).closest('button');
+      if (this.editing || (onButton && (e.key === 'Enter' || e.key === ' '))) return;
+      if (this.onKey(e)) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
     });
     this.root.addEventListener('keyup', (e) => {
       if (e.key === ' ') this.space = false;
     });
   }
 
+  /** Handles a key on the canvas; false lets it through. Esc is handled in cancelSomething(). */
+  private onKey(e: KeyboardEvent): boolean {
+    const mod = e.ctrlKey || e.metaKey;
+    const key = e.key.toLowerCase();
+    const arrow = ARROWS[e.key];
+    if (this.linking) {
+      if (arrow) this.moveTarget(arrow);
+      else if (e.key === 'Tab') this.cycleTarget(e.shiftKey ? -1 : 1);
+      else if (e.key === 'Enter') {
+        const { from, to } = this.linking;
+        this.linking = null;
+        if (to) this.connect(from, to);
+        else this.redraw();
+      }
+      // Every other key is held while choosing, so a stray letter does not switch tools.
+      return true;
+    }
+    if (mod && key === 'z') this.restore(e.shiftKey ? this.at + 1 : this.at - 1);
+    else if (mod && key === 'y') this.restore(this.at + 1);
+    else if (mod) return false;
+    else if (e.key === '?') this.toggleKeys();
+    else if (e.key === 'Tab') this.cycleSelection(e.shiftKey ? -1 : 1);
+    else if (e.key === 'Delete' || e.key === 'Backspace') this.deleteSelection();
+    else if (e.key === ' ') this.space = true;
+    else if (e.key === 'Enter') {
+      if (this.tool !== 'select' && this.tool !== 'connect') this.placeNext(this.tool);
+      else if (this.sel?.kind === 'node') this.editNodeLabel(this.sel.id);
+      else if (this.sel?.kind === 'edge') this.doubleClick({ edge: this.sel.index });
+      else return false;
+    } else if (arrow && e.altKey) this.selectNearby(arrow);
+    else if (arrow && this.sel?.kind === 'node')
+      this.nudge(e.key, e.shiftKey ? GRID * 2 : this.snap ? GRID : 1);
+    else if (e.altKey) return false;
+    else if (key === 'g') {
+      this.snap = !this.snap;
+      this.redrawChrome();
+    } else if (key === 'l' && this.sel?.kind === 'node') this.startLinking(this.sel.id);
+    else {
+      const t = TOOLS.find((x) => x.key === key);
+      if (!t) return false;
+      this.setTool(t.tool);
+    }
+    return true;
+  }
+
+  // ---- Keyboard selection and connecting ---------------------------------------
+
+  /** Tab order: nodes in creation order, then edges. */
+  private cycleSelection(step: 1 | -1): void {
+    const items: Selection[] = [
+      ...this.d.nodes.map((n): Selection => ({ kind: 'node', id: n.id })),
+      ...this.d.edges.map((_, index): Selection => ({ kind: 'edge', index })),
+    ];
+    if (!items.length) return;
+    const keyOf = (s: Selection) => (s ? (s.kind === 'node' ? `n:${s.id}` : `e:${s.index}`) : '');
+    const i = items.findIndex((s) => keyOf(s) === keyOf(this.sel));
+    // From nothing selected, Tab starts at the first item and Shift+Tab at the last.
+    const next = i < 0 ? (step > 0 ? 0 : items.length - 1) : (i + step + items.length) % items.length;
+    this.sel = items[next]!;
+    this.reveal();
+    this.redraw();
+  }
+
+  private selectNearby(dir: Direction): void {
+    const boxes = this.drawing?.boxes;
+    if (!boxes) return;
+    if (this.sel?.kind !== 'node') return this.cycleSelection(1);
+    const id = nearestInDirection(boxes.get(this.sel.id)!, boxes.values(), dir);
+    if (!id) return;
+    this.sel = { kind: 'node', id };
+    this.reveal();
+    this.redraw();
+  }
+
+  private startLinking(from: string): void {
+    const boxes = this.drawing?.boxes;
+    if (!boxes) return;
+    const start = boxes.get(from)!;
+    // Start at the next node along the flow, else the nearest one.
+    const flow: Direction = { LR: 'right', RL: 'left', TD: 'down', TB: 'down', BT: 'up' }[
+      this.d.dir
+    ] as Direction;
+    let to = nearestInDirection(start, boxes.values(), flow);
+    if (!to) {
+      let best = Infinity;
+      for (const b of boxes.values()) {
+        const dist = Math.hypot(b.x - start.x, b.y - start.y);
+        if (b.id !== from && dist < best) {
+          best = dist;
+          to = b.id;
+        }
+      }
+    }
+    this.linking = { from, to };
+    this.redraw();
+  }
+
+  private moveTarget(dir: Direction): void {
+    const boxes = this.drawing?.boxes;
+    if (!boxes || !this.linking) return;
+    const at = boxes.get(this.linking.to ?? this.linking.from)!;
+    const id = nearestInDirection(at, boxes.values(), dir, [this.linking.from]);
+    if (id) this.linking.to = id;
+    this.redraw();
+  }
+
+  private cycleTarget(step: 1 | -1): void {
+    if (!this.linking) return;
+    const ids = this.d.nodes.map((n) => n.id).filter((id) => id !== this.linking!.from);
+    if (!ids.length) return;
+    const i = this.linking.to ? ids.indexOf(this.linking.to) : -1;
+    this.linking.to = ids[(i + step + ids.length) % ids.length]!;
+    this.redraw();
+  }
+
+  /** Pans so the selected node is on screen. */
+  private reveal(): void {
+    if (this.sel?.kind !== 'node') return;
+    const n = this.node(this.sel.id);
+    if (!n) return;
+    const r = this.stage.getBoundingClientRect();
+    const s = this.toScreen({ x: n.x!, y: n.y! });
+    const pad = 60;
+    if (s.x < pad) this.view.tx += pad - s.x;
+    if (s.x > r.width - pad) this.view.tx -= s.x - (r.width - pad);
+    if (s.y < pad) this.view.ty += pad - s.y;
+    if (s.y > r.height - pad) this.view.ty -= s.y - (r.height - pad);
+  }
+
   // ---- Edits -------------------------------------------------------------------
+
+  /**
+   * Places a node from the keyboard: after the selected node along the flow, connected
+   * from it, in one undo step; with nothing selected, in the middle of the view.
+   */
+  private placeNext(shape: Shape): void {
+    const labels = makeLabels();
+    const size = nodeSize({ id: '', shape, label: DEFAULT_LABEL[shape] ?? '' }, labels.measure);
+    const boxes = this.drawing?.boxes ?? new Map();
+    const anchor = this.sel?.kind === 'node' ? boxes.get(this.sel.id) : undefined;
+    let p: { x: number; y: number };
+    if (anchor) p = nextFreeSpot(anchor, size, boxes.values(), this.d.dir);
+    else {
+      const r = this.stage.getBoundingClientRect();
+      p = this.toWorld({ clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 });
+    }
+    const id = this.newId(shape);
+    this.d.nodes.push({
+      id,
+      shape,
+      label: DEFAULT_LABEL[shape] ?? '',
+      x: this.snapped(p.x),
+      y: this.snapped(p.y),
+    });
+    if (anchor)
+      this.d.edges.push({ from: anchor.id, to: id, label: shape === 'junction' ? '+' : '', arrow: true });
+    this.sel = { kind: 'node', id };
+    this.tool = 'select';
+    this.commit();
+    this.reveal();
+    this.applyView();
+    if (DEFAULT_LABEL[shape] !== undefined) this.editNodeLabel(id);
+  }
 
   /** Renames a node or an edge label; on a junction's sign, flips it. */
   private doubleClick(h: { id?: string; edge?: number }): void {

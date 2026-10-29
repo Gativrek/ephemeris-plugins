@@ -228,3 +228,82 @@
 .diagrams-text-box {
   fill: transparent;
 }
+
+/* ---- Shortcuts ---------------------------------------------------------------- */
+.diagrams-kbd {
+  display: inline-block;
+  min-width: 1.4em;
+  margin-left: 6px;
+  padding: 0 4px;
+  border: 1px solid var(--line);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--muted);
+  font: 500 11px/16px var(--font-ui);
+  text-align: center;
+}
+.diagrams-tool[aria-pressed='true'] .diagrams-kbd {
+  border-color: currentColor;
+  background: transparent;
+  color: inherit;
+}
+.diagrams-canvas-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  align-items: center;
+}
+.diagrams-canvas-hint .diagrams-kbd {
+  margin: 0 2px 0 0;
+}
+.diagrams-canvas-hint:first-child:not(:has(.diagrams-kbd)) {
+  color: var(--ink);
+  font-weight: 500;
+}
+.diagrams-canvas-keys {
+  position: absolute;
+  top: 48px;
+  right: 12px;
+  z-index: 2;
+  width: 360px;
+  max-height: calc(100% - 96px);
+  overflow: auto;
+  padding: 12px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+  font-size: 13px;
+}
+.diagrams-canvas-keys[hidden] {
+  display: none;
+}
+.diagrams-canvas-keys-group {
+  margin: 10px 0 6px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.diagrams-canvas-keys-group:first-child {
+  margin-top: 0;
+}
+.diagrams-canvas-keys-list {
+  grid-template-columns: 150px 1fr;
+  display: grid;
+  gap: 4px 12px;
+  margin: 0;
+}
+.diagrams-canvas-keys-key {
+  white-space: nowrap;
+}
+.diagrams-canvas-keys-key .diagrams-kbd {
+  margin: 0 4px 0 0;
+}
+.diagrams-canvas-keys-what {
+  margin: 0;
+  color: var(--text);
+}
+.diagrams-is-target .diagrams-shape {
+  stroke: var(--cyan);
+  stroke-width: 2.5;
+  stroke-dasharray: 5 3;
+}

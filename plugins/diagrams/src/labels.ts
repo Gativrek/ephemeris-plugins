@@ -23,6 +23,7 @@ export function loadMath(): Promise<void> {
 }
 
 export const needsMath = (labels: string[]) => labels.some(isMath);
+export const mathLoaded = () => katex !== null;
 
 function uiFont(): string {
   const family =

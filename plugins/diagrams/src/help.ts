@@ -63,6 +63,18 @@ flowchart TD
 
 Double-click a node or a label to rename it. Delete removes the selection. Drag the empty canvas (or hold Space, or use the middle button) to pan, and use the wheel to zoom. G turns the 8px snap grid on and off, and the arrow keys nudge the selected node. Ctrl+Z and Ctrl+Shift+Z undo and redo while the canvas is open.
 
+The line under the canvas shows what the keys do at that moment, and **Keys** (or \`?\`) lists them all.
+
+### Without the mouse
+
+Everything can be done from the keyboard:
+
+- **Select:** Tab and Shift+Tab step through the nodes, then the edges. Alt+Arrows jumps to the nearest node in that direction.
+- **Add a node after another:** select a node, press a shape key (R, C, D, J, B or T), then Enter. The new node goes after the selected one, along the flow, already connected to it. Type its label and press Enter. Repeat to build a chain: r, junction, controller, plant.
+- **Connect two nodes:** select the first, press L, choose the target with the arrow keys or Tab, and press Enter. Esc cancels.
+- **Rename or flip a sign:** select a node or an edge and press Enter. On an edge into a junction, Enter flips its sign.
+- **Close the loop:** select the branch point after the plant, press L, choose the junction, and press Enter. The feedback path routes underneath by itself.
+
 **Done** writes the diagram back into the note as one change, so Ctrl+Z in the note undoes the whole edit. Closing with changes asks whether to apply them.
 
 Positions are saved as comments, one per node: \`%% @pos A 160 40\` puts A's centre at (160, 40). Other apps, such as Obsidian or GitHub, ignore these comments and lay out the same graph themselves, so the diagram looks different there but says the same thing. A diagram with no positions is laid out by Mermaid; the canvas starts from that layout.
