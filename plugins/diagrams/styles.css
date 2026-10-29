@@ -1,0 +1,230 @@
+/* Classes are prefixed with the plugin id (SPECS 12.2) and use design tokens only.
+   Diagram colors never use cyan or gold, except the canvas selection (GOALS 20). */
+.diagrams-block {
+  position: relative;
+  /* Takes the note's width without adding any, so a wide diagram never holds the column open. */
+  width: 0;
+  min-width: 100%;
+  padding: 4px 0;
+  font-family: var(--font-ui);
+  color: var(--ink);
+}
+.diagrams-block > svg,
+.diagrams-mermaid {
+  display: block;
+  margin: 0 auto;
+}
+.diagrams-mermaid svg {
+  display: block;
+  margin: 0 auto;
+  max-width: 100%;
+  height: auto;
+}
+.diagrams-edit {
+  position: absolute;
+  top: 4px;
+  right: 0;
+  opacity: 0;
+  transition: opacity 120ms;
+}
+.diagrams-block:hover .diagrams-edit,
+.diagrams-edit:focus-visible {
+  opacity: 1;
+}
+
+/* ---- Drawing ------------------------------------------------------------------ */
+.diagrams-svg {
+  overflow: visible;
+  font: 400 14px var(--font-ui);
+}
+.diagrams-shape {
+  fill: var(--surface-raised);
+  stroke: var(--ink);
+  stroke-width: 1.5;
+}
+.diagrams-cross {
+  stroke: var(--ink);
+  stroke-width: 1.5;
+}
+.diagrams-branch {
+  fill: var(--ink);
+}
+.diagrams-label,
+.diagrams-edge-label {
+  fill: var(--ink);
+}
+.diagrams-line {
+  fill: none;
+  stroke: var(--text);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+}
+.diagrams-arrowhead {
+  fill: var(--text);
+}
+.diagrams-sign {
+  font: 600 15px var(--font-ui);
+  fill: var(--ink);
+}
+.diagrams-chip-bg {
+  fill: var(--surface);
+}
+.diagrams-math {
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--ink);
+  text-align: center;
+  white-space: nowrap;
+}
+.diagrams-probe {
+  position: absolute;
+  left: -10000px;
+  top: 0;
+  visibility: hidden;
+  display: inline-block;
+}
+
+/* ---- Canvas ------------------------------------------------------------------- */
+.diagrams-canvas {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  outline: none;
+  font-family: var(--font-ui);
+}
+.diagrams-canvas-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 0 0 10px;
+}
+.diagrams-canvas-spacer {
+  flex: 1;
+}
+.diagrams-tool[aria-pressed='true'],
+.diagrams-canvas-bar .vx-btn[aria-pressed='true'] {
+  background: var(--selection);
+  color: var(--on-selection);
+}
+.diagrams-stage {
+  box-sizing: border-box;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  font: 400 14px var(--font-ui);
+  touch-action: none;
+  user-select: none;
+  cursor: default;
+}
+.diagrams-stage[data-tool='rect'],
+.diagrams-stage[data-tool='circle'],
+.diagrams-stage[data-tool='diamond'],
+.diagrams-stage[data-tool='junction'],
+.diagrams-stage[data-tool='branch'] {
+  cursor: crosshair;
+}
+.diagrams-stage .diagrams-node {
+  cursor: move;
+}
+.diagrams-stage[data-tool='connect'] .diagrams-node {
+  cursor: crosshair;
+}
+.diagrams-grid-dot {
+  fill: var(--line);
+}
+.diagrams-edge-hit {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 12;
+  cursor: pointer;
+}
+.diagrams-is-selected .diagrams-shape,
+.diagrams-is-selected.diagrams-branch,
+.diagrams-is-selected .diagrams-branch {
+  stroke: var(--cyan);
+  stroke-width: 2.5;
+}
+.diagrams-edge.diagrams-is-selected .diagrams-line {
+  stroke: var(--cyan);
+  stroke-width: 2.5;
+}
+.diagrams-handle {
+  fill: var(--surface);
+  stroke: var(--cyan);
+  stroke-width: 1.5;
+  cursor: crosshair;
+}
+.diagrams-preview {
+  fill: none;
+  stroke: var(--cyan);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 3;
+  pointer-events: none;
+}
+.diagrams-canvas-status {
+  padding-top: 8px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.diagrams-canvas-input {
+  position: absolute;
+  z-index: 2;
+  min-width: 120px;
+  transform: translate(-50%, -50%);
+  padding: 4px 8px;
+  border: 1px solid var(--cyan);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+  color: var(--ink);
+  font: 400 14px var(--font-ui);
+  text-align: center;
+}
+.diagrams-ask {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--surface) 60%, transparent);
+}
+.diagrams-ask-box {
+  padding: 16px 20px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+}
+.diagrams-ask-title {
+  margin: 0 0 12px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.diagrams-ask-row {
+  display: flex;
+  gap: 8px;
+}
+.diagrams-canvas-readonly {
+  font-family: var(--font-ui);
+}
+.diagrams-canvas-note {
+  margin: 0 0 4px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.diagrams-canvas-why {
+  margin: 0 0 12px;
+  color: var(--muted);
+}
+.diagrams-canvas-mermaid svg {
+  max-width: 100%;
+  height: auto;
+}
+.diagrams-text-box {
+  fill: transparent;
+}

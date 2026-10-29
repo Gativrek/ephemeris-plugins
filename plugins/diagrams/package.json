@@ -1,0 +1,19 @@
+{
+  "name": "@ephemeris-plugins/diagrams",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "description": "Ephemeris plugin: Mermaid flowcharts and control block diagrams, with a drag-and-drop editor.",
+  "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "katex": "0.19.1",
+    "mermaid": "11.17.2"
+  },
+  "devDependencies": {
+    "@ephemeris-notes/plugin-api": "link:../../../packages/plugin-api"
+  }
+}
