@@ -5,7 +5,6 @@ import {
   autoT,
   bode,
   dcGain,
-  ImproperError,
   logspace,
   margins,
   stability,
@@ -16,7 +15,7 @@ import { Figure, MARGIN, type Panel, type Series } from './chart';
 import { BlockError, type Block } from './parse';
 import { fixed, fmt, linear, log } from './scale';
 import { svg } from './svg';
-import type { Complex } from './poly';
+import { degree, type Complex } from './poly';
 
 const BODE_POINTS = 600;
 const STEP_SAMPLES = 2001;
@@ -139,19 +138,32 @@ export function renderBode(target: HTMLElement, block: Block): Figure {
 
 // ---- Step ------------------------------------------------------------------------
 
-export function renderStep(target: HTMLElement, block: Block): Figure {
+/**
+ * Systems with more zeros than poles have no step response. They are left out and named
+ * under the plot, since a loop's building blocks (L = s^2 + 2s + 1) often are; only a
+ * block with nothing else to plot is an error.
+ */
+export function stepSystems(block: Block): { plotted: Block; skipped: string[] } {
+  const proper = block.systems.filter((s) => degree(s.tf.num) <= degree(s.tf.den));
+  const skipped = block.systems.filter((s) => !proper.includes(s)).map((s) => s.name);
+  if (!proper.length) {
+    const which = skipped.length > 1 ? `${skipped.join(', ')} have` : `${skipped[0]} has`;
+    throw new BlockError(`No step response: ${which} more zeros than poles.`);
+  }
+  return { plotted: { ...block, systems: proper }, skipped };
+}
+
+export function renderStep(target: HTMLElement, full: Block): Figure {
+  const { plotted: block, skipped } = stepSystems(full);
   const { options } = block;
   const systems = analyses(block);
   const T = options.t ?? Math.max(...systems.map((s) => autoT(s.a)));
   const ts = Array.from({ length: STEP_SAMPLES }, (_, i) => (T * i) / (STEP_SAMPLES - 1));
-  const responses = systems.map((s) => {
-    try {
-      return { ...s, y: stepResponse(s.a.tf, T, STEP_SAMPLES), st: stability(s.a) };
-    } catch (err) {
-      if (err instanceof ImproperError) throw new BlockError(`${s.name}: ${err.message}`);
-      throw err;
-    }
-  });
+  const responses = systems.map((s) => ({
+    ...s,
+    y: stepResponse(s.a.tf, T, STEP_SAMPLES),
+    st: stability(s.a),
+  }));
 
   const panelH = 260;
   const fig = new Figure(target, {
@@ -174,10 +186,12 @@ export function renderStep(target: HTMLElement, block: Block): Figure {
   };
   fig.drawPanel(panel, options.grid, true);
   for (const s of responses) {
-    const who = systems.length > 1 ? `${s.name}: ` : '';
+    const who = systems.length > 1 || skipped.length ? `${s.name}: ` : '';
     if (s.st === 'stable') fig.note(`${who}final value ${fmt(dcGain(s.a))}`);
     else fig.note(`${who}${s.st === 'unstable' ? 'Unstable system' : 'Marginally stable system'}`, 'warning');
   }
+  if (skipped.length)
+    fig.note(`Not plotted: ${skipped.join(', ')} (more zeros than poles, so no step response)`);
   fig.crosshair(
     [panel],
     (i) => ({

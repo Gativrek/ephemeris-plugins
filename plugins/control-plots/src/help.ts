@@ -94,7 +94,7 @@ To name a block in the note's outline, add \`title="Open loop"\` after \`bode\` 
 
 **Bode.** Magnitude and phase share the frequency axis. The phase starts where MATLAB's \`bode\` starts it: a negative gain at 180°, 1/s² at −180°. With \`margins = on\`, the crossover frequencies are marked and the margins are written under the plot.
 
-**Step.** Stable systems show their final value. An unstable or marginally stable system says so under the plot. A system with more zeros than poles has no step response, and the block says which one.
+**Step.** Stable systems show their final value. An unstable or marginally stable system says so under the plot. A system with more zeros than poles, such as \`L = s^2 + 2s + 1\`, has no step response: it is left out and named under the plot, so a loop's building blocks can stay in the block.
 
 **Pole-zero map.** Equal axes, with the imaginary axis drawn. The poles and zeros are also listed under the plot.
 
