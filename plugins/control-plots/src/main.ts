@@ -16,6 +16,13 @@ const RENDER: Record<Kind, (el: HTMLElement, block: ReturnType<typeof parseBlock
   pzmap: renderPzmap,
 };
 
+/** What fence completion writes into a new block (API 1.2.0; older apps write it empty). */
+const STARTER: Record<Kind, string> = {
+  bode: 'G = 1/(s+1)',
+  step: 'G = 4/(s^2 + 2s + 4)',
+  pzmap: 'G = (s + 3)/((s + 1)(s^2 + 2s + 5))',
+};
+
 function draw(el: HTMLElement, kind: Kind, info: BlockInfo): Figure {
   const block = parseBlock(info.source);
   el.replaceChildren();
@@ -37,6 +44,7 @@ class ControlPlots implements Plugin {
   onload(ctx: PluginContext): void {
     for (const kind of Object.keys(RENDER) as Kind[]) {
       ctx.blocks.register(kind, {
+        starter: STARTER[kind],
         render: (el, info, host): BlockView => {
           let current = info;
           let fig = draw(el, kind, current);

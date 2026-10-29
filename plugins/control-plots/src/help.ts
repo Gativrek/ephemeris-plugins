@@ -5,8 +5,8 @@ Draws Bode plots, step responses and pole-zero maps from transfer functions you 
 
 ## Your first plot
 
-1. On an empty line, type three backticks and \`bo\`, then pick **bode** from the suggestions with Enter. This writes an empty block with the cursor inside it.
-2. On the empty line inside the block, type one system: \`G = 1/(s+1)\`.
+1. On an empty line, type three backticks and \`bo\`, then pick **bode** from the suggestions with Enter. This writes a block with an example system in it, \`G = 1/(s+1)\`, selected.
+2. Type your own system to replace it, or keep the example for now. (If the block comes out empty, type \`G = 1/(s+1)\` on the empty line.)
 3. Click anywhere outside the block, or move the cursor out with the arrow keys. The text turns into the plot.
 
 Written out, the block looks like this, and draws the plot below it:
