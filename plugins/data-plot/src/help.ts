@@ -58,7 +58,26 @@ One per line, as \`option: value\`. Only one of \`file\` and the \`---\` rows is
 | \`delimiter: ;\` | \`,\`, \`;\` or \`tab\`. Without it: whichever the first line uses. |
 | \`decimal: ,\` | Decimal commas (\`3,14\`), as Excel writes them in Brazilian Portuguese. Detected when the delimiter is \`;\` or tab. |
 
-Columns can be named or numbered from 1: \`y: [2, 3]\`. A file whose first row is all numbers (MATLAB's \`writematrix\`) has no header, so its columns are numbered. A line starting with \`#\` is a comment.
+Columns can be named or numbered from 1: \`y: [2, 3]\`. A file whose first row is all numbers (MATLAB's \`writematrix\`) has no header, so its columns are numbered.
+
+## Comments
+
+A line starting with \`#\` is a comment, in the block's options and in the data, whether it's in a file or after \`---\`.
+
+NumPy's \`savetxt\` writes the header as a comment, \`# t,roll,pitch\`, right above the numbers. A comment in that place with one name per column is read as the header. To keep a comment like \`# Run 3, slow\` from naming two columns, leave a blank line after it.
+
+\`\`\`plot
+x: t
+y: [roll, pitch]
+---
+# Attitude, run 3 (simulated)
+
+# t,roll,pitch
+0,0.0,1.0
+1,2.1,0.8
+2,3.9,0.3
+3,4.6,-0.4
+\`\`\`
 
 ## Kinds
 

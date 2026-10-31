@@ -2,7 +2,8 @@
  * CSV for Data Plot (SPECS 13.4): RFC 4180 quoting, `,` `;` or tab detected from the
  * first line (or given), `.` or `,` decimals (a comma is detected when the delimiter is
  * not one), and a header row unless the first row is all numbers, as from MATLAB's
- * `writematrix`. Empty cells are gaps.
+ * `writematrix`, or as a comment right above the numbers, as from NumPy's `savetxt`. Empty
+ * cells are gaps, and lines starting with `#` are comments.
  */
 
 export type Delimiter = ',' | ';' | '\t';
@@ -23,9 +24,22 @@ export class CsvError extends Error {}
 
 const BOM = String.fromCharCode(0xfeff);
 
-/** Splits text into records, honouring quotes (which may hold delimiters and newlines). */
-function records(text: string, delimiter: string): Array<{ fields: string[]; line: number }> {
-  const out: Array<{ fields: string[]; line: number }> = [];
+interface Rec {
+  fields: string[];
+  line: number;
+}
+
+/**
+ * Splits text into records, honouring quotes (which may hold delimiters and newlines).
+ * A line starting with `#` is a comment: left out of the records, its text after the `#`
+ * kept in `comments`.
+ */
+function records(
+  text: string,
+  delimiter: string,
+): { recs: Rec[]; comments: Array<{ text: string; line: number }> } {
+  const out: Rec[] = [];
+  const comments: Array<{ text: string; line: number }> = [];
   let fields: string[] = [];
   let field = '';
   let quoted = false;
@@ -49,6 +63,12 @@ function records(text: string, delimiter: string): Array<{ fields: string[]; lin
         if (c === '\n') line++;
         field += c;
       }
+    } else if (c === '#' && !fields.length && field.trim() === '') {
+      let end = text.indexOf('\n', i);
+      if (end < 0) end = text.length;
+      comments.push({ text: text.slice(i + 1, end).replace(/\r$/, ''), line });
+      field = '';
+      i = end - 1;
     } else if (c === '"' && field.trim() === '') {
       quoted = true;
       field = '';
@@ -63,12 +83,14 @@ function records(text: string, delimiter: string): Array<{ fields: string[]; lin
     } else field += c;
   }
   if (field !== '' || fields.length) endRecord();
-  return out;
+  return { recs: out, comments };
 }
 
-/** The delimiter used most on the first non-empty line, outside quotes; `,` by default. */
+const COMMENT_LINE = /^[ \t]*#/;
+
+/** The delimiter used most on the first non-empty line that is not a comment, outside quotes; `,` by default. */
 export function detectDelimiter(text: string): Delimiter {
-  const first = text.split(/\r?\n/).find((l) => l.trim() !== '') ?? '';
+  const first = text.split(/\r?\n/).find((l) => l.trim() !== '' && !COMMENT_LINE.test(l)) ?? '';
   const counts: Record<Delimiter, number> = { ',': 0, ';': 0, '\t': 0 };
   let quoted = false;
   for (const c of first) {
@@ -95,7 +117,7 @@ export function parseNumber(cell: string, decimal: '.' | ','): number | null {
 export function parseCsv(text: string, opts: { delimiter?: Delimiter; decimal?: '.' | ',' } = {}): Table {
   const clean = text.startsWith(BOM) ? text.slice(1) : text;
   const delimiter = opts.delimiter ?? detectDelimiter(clean);
-  const recs = records(clean, delimiter);
+  const { recs, comments } = records(clean, delimiter);
   if (!recs.length) throw new CsvError('The data is empty.');
   // A comma decimal shows as "1,5" cells when the delimiter is not a comma.
   const decimal =
@@ -103,15 +125,22 @@ export function parseCsv(text: string, opts: { delimiter?: Delimiter; decimal?: 
     (delimiter !== ',' && recs.slice(0, 50).some((r) => r.fields.some((f) => /^\s*[+-]?\d+,\d+/.test(f)))
       ? ','
       : '.');
+  const isNumber = (f: string) => parseNumber(f, decimal) !== null && f.trim() !== '';
   const first = recs[0]!.fields;
-  const hasHeader = !first.every((f) => {
-    const n = parseNumber(f, decimal);
-    return n !== null && f.trim() !== '';
-  });
   const width = Math.max(...recs.map((r) => r.fields.length));
+  let header: string[] | null = first.every(isNumber) ? null : first;
+  if (!header) {
+    // NumPy's savetxt writes the header as a comment ("# t,roll,pitch") right above the
+    // numbers: it names the columns when it has one name per column.
+    const above = comments.find((c) => c.line === recs[0]!.line - 1);
+    const names = above && records(above.text, delimiter).recs[0]?.fields;
+    if (names && names.length === width && names.every((n) => n.trim() !== '' && !isNumber(n)))
+      header = names;
+  }
+  const hasHeader = header !== null;
   // Unnamed columns read as "column 2" on the axes; `y: 2` still picks them by number.
-  const names = Array.from({ length: width }, (_, i) => (hasHeader && first[i]?.trim()) || `column ${i + 1}`);
-  const data = hasHeader ? recs.slice(1) : recs;
+  const names = Array.from({ length: width }, (_, i) => header?.[i]?.trim() || `column ${i + 1}`);
+  const data = header === first ? recs.slice(1) : recs;
   return {
     names,
     hasHeader,

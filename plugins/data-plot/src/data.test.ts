@@ -30,6 +30,23 @@ describe('CSV', () => {
     expect(column(t, '2').values).toEqual([1, 2, 4]);
   });
 
+  it('skips comment lines, and takes a header from the comment above the numbers (savetxt)', () => {
+    const t = parseCsv('# Run 3, simulated; angles in degrees\nt;roll\n0;1,5\n  # paused\n1;2\n');
+    expect(t.delimiter).toBe(';');
+    expect(t.names).toEqual(['t', 'roll']);
+    expect(column(t, 'roll').values).toEqual([1.5, 2]);
+    expect(t.lines).toEqual([3, 5]);
+    const np = parseCsv('# Run 3\r\n# t,roll\r\n0.0,1.5\r\n1.0,2.0\r\n');
+    expect(np.hasHeader).toBe(true);
+    expect(np.names).toEqual(['t', 'roll']);
+    expect(column(np, 't').values).toEqual([0, 1]);
+    // A comment that doesn't name every column, or isn't right above, names nothing.
+    expect(parseCsv('# Run 3, simulated, slow\n0,1\n1,2\n').names).toEqual(['column 1', 'column 2']);
+    expect(parseCsv('# Run 3\n# 1,2\n0,1\n').hasHeader).toBe(false);
+    expect(parseCsv('# t,roll\n\n0,1\n').hasHeader).toBe(false);
+    expect(() => parseCsv('# only a comment\n')).toThrow('The data is empty.');
+  });
+
   it('honours quotes, CRLF and a BOM', () => {
     const t = parseCsv(String.fromCharCode(0xfeff) + '"name, unit",v\r\n"a ""b""",1\r\n');
     expect(t.names).toEqual(['name, unit', 'v']);
