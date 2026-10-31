@@ -8,6 +8,7 @@ Plugins for [Ephemeris](https://github.com/Gativrek/ephemeris-notes), the deskto
 | [Control Plots](plugins/control-plots) | ` ```bode ` ` ```step ` ` ```pzmap ` | Bode, step and pole-zero plots from transfer functions, checked against MATLAB. |
 | [Diagrams](plugins/diagrams) | ` ```mermaid ` | Mermaid flowcharts and control block diagrams, with a drag-and-drop canvas. |
 | [Data Plot](plugins/data-plot) | ` ```plot ` | Line, scatter and step plots of CSV files in the Vault, redrawn when the file changes. |
+| [Citations](plugins/citations) | `[@key]` and ` ```bibliography ` | Pandoc citations from BibTeX or CSL-JSON, in IEEE or ABNT, with hover cards and a reference list. |
 
 Plugins use only the typed plugin API, `@ephemeris-notes/plugin-api`. They run in the app's renderer with no Node access. Plugins are trusted code: install only plugins you trust.
 
@@ -77,6 +78,12 @@ xlabel: Time (s)
 ````
 
 The file is relative to the note (or to the Vault root with a leading `/`); small tables can follow a `---` line in the block instead. The delimiter and decimal commas are detected, a header-less file (MATLAB `writematrix`) is read by column number, and lines longer than 5,000 samples are thinned with LTTB for drawing while hover reads every sample. The help page lists the options.
+
+## Citations
+
+Write `[@groves2013, p. 45]` or `@groves2013` with keys from Zotero (Better BibTeX), choose the exported `.bib` or CSL-JSON file in Settings > Plugins > Citations, and put a `bibliography` block where the reference list goes. IEEE numbers references in the order the note cites them, live as you type; ABNT is author and year. A note can add its own libraries with Pandoc's `bibliography:` frontmatter. Bracketed citations need an Ephemeris build newer than 1.2.0 (the grammar change that stops `[@key]` from being read as a link).
+
+**Licenses.** The plugin bundles [citeproc-js](https://github.com/Juris-M/citeproc-js) 2.4.63, unmodified, under the CPAL-1.0 (it is also offered under the AGPL-3.0); its license is in `dist/licenses/citeproc-js.txt`. The CSL styles and locales in `plugins/citations/csl/` are the Citation Style Language projects' own, under CC BY-SA 3.0. The rest of this repository is MIT.
 
 ## License
 

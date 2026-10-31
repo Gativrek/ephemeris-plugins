@@ -1,0 +1,19 @@
+{
+  "name": "@ephemeris-plugins/citations",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "description": "Ephemeris plugin: Pandoc citations from BibTeX or CSL-JSON, formatted in IEEE or ABNT with citeproc-js.",
+  "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@retorquere/bibtex-parser": "11.0.0",
+    "citeproc": "2.4.63"
+  },
+  "devDependencies": {
+    "@ephemeris-notes/plugin-api": "link:../../../packages/plugin-api"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "id": "citations",
+  "name": "Citations",
+  "version": "0.1.0",
+  "apiVersion": "^1.1.0",
+  "main": "main.js",
+  "styles": "styles.css",
+  "description": "Pandoc citations from BibTeX or CSL-JSON, formatted in IEEE or ABNT, with hover cards and reference lists.",
+  "author": "Gativrek"
+}

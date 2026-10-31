@@ -1,0 +1,85 @@
+/* Classes are prefixed with the plugin id (SPECS 12.2) and use design tokens only. */
+.citations-cite {
+  color: var(--text);
+}
+.citations-plain {
+  color: inherit;
+}
+/* A key that is not in the library looks like a missing link. */
+.citations-missing {
+  color: var(--link-missing);
+  text-decoration: underline dashed currentColor;
+  text-underline-offset: 3px;
+}
+.citations-partial {
+  text-decoration: underline dashed var(--link-missing);
+  text-underline-offset: 3px;
+}
+
+/* ---- Hover card --------------------------------------------------------------- */
+.citations-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 420px;
+  font: 400 13px/1.45 var(--font-ui);
+  color: var(--text);
+}
+.citations-card-entry {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.citations-card-entry p {
+  margin: 0;
+}
+.citations-card-authors {
+  color: var(--muted);
+}
+.citations-card-title {
+  font-weight: 600;
+  color: var(--ink);
+}
+.citations-card-venue {
+  font-style: italic;
+}
+.citations-card-link {
+  color: var(--link);
+  word-break: break-all;
+}
+.citations-card-cited,
+.citations-card-note {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* ---- Reference list ------------------------------------------------------------ */
+.citations-bibliography {
+  font-family: var(--font-note);
+  color: var(--note-text);
+}
+.citations-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.citations-list .csl-entry {
+  line-height: 1.55;
+}
+/* IEEE: the number in a column of its own, entries hanging beside it. */
+.citations-ieee .csl-entry {
+  display: grid;
+  grid-template-columns: 3em 1fr;
+}
+.citations-ieee .csl-left-margin {
+  color: var(--muted);
+}
+.citations-list a {
+  color: var(--link);
+  word-break: break-all;
+}
+.citations-empty {
+  margin: 4px 0;
+  font: 400 13px/1.5 var(--font-ui);
+  color: var(--muted);
+}
