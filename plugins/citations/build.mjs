@@ -6,6 +6,7 @@ import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { build } from 'esbuild';
+import { writeThirdParty } from '../../scripts/third-party.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
@@ -13,7 +14,7 @@ const out = join(here, 'dist');
 rmSync(out, { recursive: true, force: true });
 mkdirSync(join(out, 'licenses'), { recursive: true });
 
-await build({
+const result = await build({
   entryPoints: [join(here, 'src/main.ts')],
   outdir: out,
   entryNames: '[name]',
@@ -27,6 +28,7 @@ await build({
   loader: { '.csl': 'text', '.xml': 'text' },
   legalComments: 'linked',
   logLevel: 'warning',
+  metafile: true,
 });
 copyFileSync(join(here, 'manifest.json'), join(out, 'manifest.json'));
 copyFileSync(join(here, 'styles.css'), join(out, 'styles.css'));
@@ -35,4 +37,5 @@ copyFileSync(
   join(out, 'licenses/citeproc-js.txt'),
 );
 copyFileSync(join(here, 'csl/README.md'), join(out, 'licenses/csl-styles.md'));
+writeThirdParty(result.metafile, out);
 console.log(`citations built to ${out}`);

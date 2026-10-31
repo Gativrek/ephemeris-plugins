@@ -93,3 +93,5 @@ In a note with `flashcards: true` in its frontmatter, a line `front :: back` is 
 ## License
 
 MIT. See [`LICENSE`](LICENSE).
+
+A built plugin that bundles other packages (Diagrams with Mermaid and KaTeX, Citations, Flashcards) carries their licenses in `dist/licenses/THIRD-PARTY.txt`, which the build writes from the list of packages in the bundle.
