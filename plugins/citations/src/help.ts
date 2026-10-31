@@ -7,8 +7,8 @@ Cite references from your reference manager with Pandoc's syntax, and get them f
 
 1. **Export your library.** In Zotero with Better BibTeX: right-click the library or a collection, **Export…**, choose **Better BibTeX** (or **Better CSL JSON**), tick **Keep updated**, and save it inside your library folder, for example \`References/library.bib\`. Zotero then rewrites the file whenever you change a reference, and the notes follow.
 2. **Point the plugin at it.** In **Settings > Plugins > Citations**, choose the file as **Library**, and pick a **Citation style**.
-3. **Cite.** Write \`[@groves2013]\` in a note, using the citation key from Zotero (Better BibTeX shows it at the top of each item). It turns into \`[1]\` (IEEE) or \`(Groves, 2013)\` (ABNT) when the cursor leaves it. Hover over it to see the reference.
-4. **List the references.** Where the list goes, usually at the end, add a \`bibliography\` block: type three backticks and \`bib\`, and pick **bibliography** (or press \`Ctrl+Shift+C\`).
+3. **Cite.** Run **Insert Citation…** from the command palette (give it a shortcut in Settings > Keyboard), search by author, title, year or key, and press Enter. Or write \`[@groves2013]\` yourself, with the citation key Better BibTeX shows at the top of each item in Zotero. It turns into \`[1]\` (IEEE) or \`(Groves, 2013)\` (ABNT) when the cursor leaves it. Hover over it to see the reference.
+4. **The reference list** appears at the end of the note by itself, under **References**. To put it somewhere else, add a \`bibliography\` block there (type three backticks and \`bib\`, or press \`Ctrl+Shift+C\`); the list at the end then goes away.
 
 \`\`\`\`
 ## References
@@ -16,6 +16,8 @@ Cite references from your reference manager with Pandoc's syntax, and get them f
 \`\`\`bibliography
 \`\`\`
 \`\`\`\`
+
+In the picker, the arrow keys choose, **Tab** marks several references (they go into one citation, \`[@a; @b]\`), and **Esc** closes. The list at the end of notes can be turned off in Settings (**List references at the end of notes**). Both need Ephemeris 1.4 or later; with an older app, use the \`bibliography\` block and write keys by hand.
 
 ## Writing citations
 

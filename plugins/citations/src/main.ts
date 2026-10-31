@@ -21,6 +21,13 @@ import { HELP } from './help';
 import { Libraries } from './library';
 
 const ID = 'citations';
+const BIBLIOGRAPHY_BLOCK = /^\s{0,3}(```|~~~)\s*bibliography\b/m;
+
+/** True when the app's plugin API is at least major.minor. */
+function atLeast(version: string, major: number, minor: number): boolean {
+  const [a = 0, b = 0] = version.split('.').map(Number);
+  return a > major || (a === major && b >= minor);
+}
 type FormatModule = typeof import('./format');
 let formatModule: Promise<FormatModule> | null = null;
 /** citeproc-js and the styles are loaded on the first citation. */
@@ -89,6 +96,13 @@ class Citations implements Plugin {
             { value: 'pt-BR', label: 'Portuguese (Brazil)' },
           ],
         },
+        {
+          key: 'footer',
+          type: 'toggle',
+          label: 'List references at the end of notes',
+          default: true,
+          hint: 'For notes that cite references and have no bibliography block of their own. Needs Ephemeris 1.4 or later.',
+        },
       ],
     });
     ctx.settings.onChange(() => {
@@ -111,9 +125,11 @@ class Citations implements Plugin {
     ctx.outline.contribute((n) => {
       const st = this.state(n.note.path);
       if (st.text !== n.text) {
+        const hadBlock = BIBLIOGRAPHY_BLOCK.test(st.text ?? '');
         st.text = n.text;
         const order = keysInOrder(n.text);
-        if (order.join('\n') !== st.order.join('\n')) {
+        // The footer also cares whether the note has a bibliography block of its own.
+        if (order.join('\n') !== st.order.join('\n') || hadBlock !== BIBLIOGRAPHY_BLOCK.test(n.text)) {
           st.order = order;
           this.refresh(n.note.path);
         }
@@ -122,6 +138,30 @@ class Citations implements Plugin {
     });
     ctx.index.registerExtractor({ id: 'keys', version: 1, kind: 'regex', pattern: KEY_ANYWHERE, key: 1 });
     ctx.help.register([{ id: 'guide', title: 'Citations guide', markdown: HELP }]);
+
+    // API 1.3.0 (SPECS 12.12): a reference list at the end of notes without a block, and a picker.
+    if (atLeast(ctx.apiVersion, 1, 3)) {
+      ctx.footers.register({
+        id: 'references',
+        render: (target, note, host) => {
+          let view: BlockView | null = null;
+          void this.bibliography(target, note, host.signal, true).then((v) => (view = v));
+          return { dispose: () => view?.dispose?.() };
+        },
+      });
+      ctx.commands.register({ id: 'insert', title: 'Insert Citation…', run: () => this.pick() });
+    }
+  }
+
+  /** Insert Citation…: search the active note's libraries, then insert `[@key]` at the cursor. */
+  private async pick(): Promise<void> {
+    const note = this.ctx.editor.activeNote();
+    if (!note) return this.ctx.ui.notify('Open a note first, then insert a citation.');
+    const { items, files } = await this.libs.itemsFor(note);
+    if (!files.length)
+      return this.ctx.ui.notify('No library is set: choose one in Settings > Plugins > Citations.');
+    const { openPicker } = await import('./picker');
+    openPicker(this.ctx, [...items.values()], (text) => void this.ctx.editor.insertText(text));
   }
 
   onunload(): void {
@@ -134,6 +174,9 @@ class Citations implements Plugin {
   private get locale(): LocaleId {
     const l = this.ctx.settings.get<string>('locale');
     return l === 'en-US' || l === 'pt-BR' ? l : 'auto';
+  }
+  private lang(): 'en-US' | 'pt-BR' {
+    return this.locale === 'auto' ? (this.style === 'abnt' ? 'pt-BR' : 'en-US') : this.locale;
   }
 
   private state(path: string): NoteState {
@@ -296,8 +339,18 @@ class Citations implements Plugin {
 
   // ---- Reference list -----------------------------------------------------------
 
-  private async bibliography(target: HTMLElement, note: NoteRef, signal: AbortSignal): Promise<BlockView> {
-    const box = el('div', 'bibliography');
+  /**
+   * A reference list: in a ```bibliography block, or (API 1.3.0) as the note's footer. The
+   * footer shows only when the note cites something and has no block of its own, and the
+   * setting is on; otherwise it stays empty and takes no space.
+   */
+  private async bibliography(
+    target: HTMLElement,
+    note: NoteRef,
+    signal: AbortSignal,
+    footer = false,
+  ): Promise<BlockView> {
+    const box = el('div', footer ? 'bibliography footer' : 'bibliography');
     target.append(box);
     let seq = 0;
     const draw = async () => {
@@ -306,6 +359,16 @@ class Citations implements Plugin {
       if (mine !== seq) return;
       const st = this.state(note.path);
       box.replaceChildren();
+      if (footer) {
+        const own = BIBLIOGRAPHY_BLOCK.test(st.text ?? '');
+        const cited = keysInOrder(st.text ?? '', { bracketedOnly: true });
+        if (this.ctx.settings.get<boolean>('footer') === false || own || !cited.length || !files.length) {
+          target.replaceChildren();
+          return;
+        }
+        if (!box.isConnected) target.append(box);
+        box.append(el('h2', 'heading', this.lang() === 'pt-BR' ? 'Referências' : 'References'));
+      }
       if (!files.length) {
         box.append(
           el(
