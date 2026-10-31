@@ -87,6 +87,16 @@ importers:
         specifier: link:../../../packages/plugin-api
         version: link:../../../packages/plugin-api
 
+  plugins/flashcards:
+    dependencies:
+      ts-fsrs:
+        specifier: 5.4.2
+        version: 5.4.2
+    devDependencies:
+      '@ephemeris-notes/plugin-api':
+        specifier: link:../../../packages/plugin-api
+        version: link:../../../packages/plugin-api
+
   plugins/text-to-image:
     devDependencies:
       '@ephemeris-notes/plugin-api':
@@ -1405,6 +1415,10 @@ packages:
   ts-dedent@2.3.0:
     resolution: {integrity: sha512-JfJeIHke7y2egdGGgRAvpCwYFUsHlM2gPcrVOxFkznt/4uzQ7HFmvE63iFHVLBJNDuyDOQgijDK/tXH/f6Msjg==}
     engines: {node: '>=6.10'}
+
+  ts-fsrs@5.4.2:
+    resolution: {integrity: sha512-z4qop4pzTcyTzuJ566d9EaX/4bZZzhYfeaPImfVr+xcYT65c5oBgFDijUhCE/D+C78eaolHIhKRZ04/RwF+v2g==}
+    engines: {node: '>=20.0.0'}
 
   type-check@0.4.0:
     resolution: {integrity: sha512-XleUoc9uwGXqjWwXaUTZAmzMcFZ5858QA2vvx1Ur5xIcixXIP+8LnFDgRplU30us6teqdlskFfu+ae4K79Ooew==}
@@ -2810,6 +2824,8 @@ snapshots:
       typescript: 6.0.3
 
   ts-dedent@2.3.0: {}
+
+  ts-fsrs@5.4.2: {}
 
   type-check@0.4.0:
     dependencies:

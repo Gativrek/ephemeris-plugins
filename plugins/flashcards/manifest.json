@@ -1,0 +1,10 @@
+{
+  "id": "flashcards",
+  "name": "Flashcards",
+  "version": "0.1.0",
+  "apiVersion": "^1.3.0",
+  "main": "main.js",
+  "styles": "styles.css",
+  "description": "Flashcards in notes that opt in, scheduled with FSRS and reviewed on the desk.",
+  "author": "Gativrek"
+}

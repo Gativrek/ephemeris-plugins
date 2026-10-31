@@ -1,0 +1,141 @@
+/* Classes are prefixed with the plugin id (SPECS 12.2) and use design tokens only. */
+.flashcards-cloze {
+  padding: 0 2px;
+  border-bottom: 2px solid var(--line);
+  background: var(--selection);
+  border-radius: 2px;
+}
+
+/* ---- Review view ---------------------------------------------------------------- */
+.flashcards-review:focus,
+.flashcards-review:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+.flashcards-review {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 32px 24px 64px;
+  outline: none;
+  font-family: var(--font-ui);
+  color: var(--text);
+}
+.flashcards-title {
+  margin: 0;
+  font: 400 30px/1.2 var(--font-display);
+  color: var(--ink);
+}
+.flashcards-counts,
+.flashcards-loading,
+.flashcards-empty {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+.flashcards-overview-head {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.flashcards-start,
+.flashcards-back {
+  align-self: flex-start;
+}
+.flashcards-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.flashcards-cell {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--line-note);
+  text-align: left;
+}
+.flashcards-head .flashcards-cell {
+  color: var(--muted);
+  font-weight: 500;
+}
+.flashcards-num {
+  width: 64px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.flashcards-section .flashcards-name {
+  padding-left: 24px;
+  color: var(--muted);
+}
+.flashcards-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: var(--line);
+  text-underline-offset: 3px;
+}
+
+/* ---- A card --------------------------------------------------------------------- */
+.flashcards-card-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.flashcards-progress {
+  font-variant-numeric: tabular-nums;
+}
+.flashcards-front,
+.flashcards-answer {
+  font: 400 20px/1.6 var(--font-note);
+  color: var(--note-text);
+}
+.flashcards-answer:not(:empty) {
+  padding-top: 16px;
+  border-top: 1px solid var(--line-note);
+}
+.flashcards-front[hidden] + .flashcards-answer {
+  padding-top: 0;
+  border-top: 0;
+}
+.flashcards-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.flashcards-grade {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 96px;
+  height: auto;
+  padding: 8px 12px;
+  gap: 2px;
+}
+.flashcards-interval {
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.flashcards-kbd {
+  display: inline-block;
+  min-width: 1.4em;
+  margin-left: 6px;
+  padding: 0 4px;
+  border: 1px solid var(--line);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  color: var(--muted);
+  font: 500 11px/16px var(--font-ui);
+  text-align: center;
+}
+.flashcards-grade .flashcards-kbd {
+  margin: 0;
+  order: -1;
+}
