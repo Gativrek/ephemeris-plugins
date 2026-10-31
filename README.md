@@ -78,11 +78,11 @@ xlabel: Time (s)
 ```
 ````
 
-The file is relative to the note (or to the Vault root with a leading `/`); small tables can follow a `---` line in the block instead. The delimiter and decimal commas are detected, a header-less file (MATLAB `writematrix`) is read by column number, and lines longer than 5,000 samples are thinned with LTTB for drawing while hover reads every sample. The help page lists the options.
+The file is relative to the note (or to the Vault root with a leading `/`); small tables can follow a `---` line in the block instead. The delimiter and decimal commas are detected, a header-less file (MATLAB `writematrix`) is read by column number, lines starting with `#` are comments (a NumPy `savetxt` header comment names the columns), and lines longer than 5,000 samples are thinned with LTTB for drawing while hover reads every sample. The help page lists the options.
 
 ## Citations
 
-Write `[@groves2013, p. 45]` or `@groves2013` with keys from Zotero (Better BibTeX), choose the exported `.bib` or CSL-JSON file in Settings > Plugins > Citations, and put a `bibliography` block where the reference list goes. IEEE numbers references in the order the note cites them, live as you type; ABNT is author and year. A note can add its own libraries with Pandoc's `bibliography:` frontmatter. Bracketed citations need an Ephemeris build newer than 1.2.0 (the grammar change that stops `[@key]` from being read as a link).
+Write `[@groves2013, p. 45]` or `@groves2013` with keys from Zotero (Better BibTeX), choose the exported `.bib` or CSL-JSON file in Settings > Plugins > Citations, and put a `bibliography` block where the reference list goes, or let the list appear at the end of the note. IEEE numbers references in the order the note cites them, live as you type; ABNT is author and year. A note can add its own libraries with Pandoc's `bibliography:` frontmatter, and **Insert Citation…** searches the library and inserts the key at the cursor. Bracketed citations need Ephemeris 1.3 or later (the grammar change that stops `[@key]` from being read as a link); Insert Citation and the list at the end of notes need 1.4 or later (plugin API 1.3).
 
 **Licenses.** Citations bundles [citeproc-js](https://github.com/Juris-M/citeproc-js) 2.4.63, unmodified, under the CPAL-1.0 (it is also offered under the AGPL-3.0); its license is in `dist/licenses/citeproc-js.txt`. The CSL styles and locales in `plugins/citations/csl/` are the Citation Style Language projects' own, under CC BY-SA 3.0. The rest of this repository is MIT.
 
