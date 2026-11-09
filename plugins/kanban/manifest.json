@@ -1,0 +1,10 @@
+{
+  "id": "kanban",
+  "name": "Kanban",
+  "version": "0.1.0",
+  "apiVersion": "^1.4.0",
+  "main": "main.js",
+  "styles": "styles.css",
+  "description": "A note shown as a board: headings are columns, list items are cards; drag, add and tick them.",
+  "author": "Gativrek"
+}

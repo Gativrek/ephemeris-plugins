@@ -1,0 +1,18 @@
+{
+  "name": "@ephemeris-plugins/kanban",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "description": "Ephemeris plugin: a note shown as a board of columns and cards.",
+  "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@ephemeris-plugins/inline": "workspace:*"
+  },
+  "devDependencies": {
+    "@ephemeris-notes/plugin-api": "link:../../../packages/plugin-api"
+  }
+}
