@@ -1,0 +1,21 @@
+{
+  "name": "@ephemeris-plugins/graph",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "description": "Ephemeris plugin: the library's notes and links as a graph.",
+  "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@ephemeris-notes/plugin-api": "link:../../../packages/plugin-api",
+    "@types/d3-force": "3.0.10",
+    "@types/d3-quadtree": "3.0.6"
+  },
+  "dependencies": {
+    "d3-force": "3.0.0",
+    "d3-quadtree": "3.0.1"
+  }
+}

@@ -14,6 +14,7 @@ Plugins for [Ephemeris](https://github.com/Gativrek/ephemeris-notes), the deskto
 | [Clip](plugins/clip) | ` ```clip ` | A segment of a local video in a note, on repeat, with its start and end set from playback. |
 | [Script timer](plugins/script-timer) | `script: true` | Narration time per heading in the outline, and the total at the end of the note. |
 | [Kanban](plugins/kanban) | `kanban: true` | A note as a board: headings are columns, list items are cards; drag, add and tick them. |
+| [Graph view](plugins/graph) | Open Graph | The notes of a Vault, a Domain or the library and their links as a graph, and a local graph around a note. |
 
 Plugins use only the typed plugin API, `@ephemeris-notes/plugin-api`. They run in the app's renderer with no Node access. Plugins are trusted code: install only plugins you trust.
 
@@ -110,6 +111,10 @@ In a note with `script: true` in its frontmatter, each heading in the outline sh
 ## Kanban
 
 A note with `kanban: true` in its frontmatter is a board: its headings are columns and the list items under them are cards, with any indented lines belonging to the card. **Open as Board** (a command, and a button at the end of the note) opens the board on the desk beside the note. Drag cards, or move the focused one with Alt+Arrow keys; add cards at a column's foot; tick them by their box. Each change edits the note itself, moving the card's own lines and nothing else, and the board follows edits made in the note. Columns and card text are edited in the note: clicking a card opens it at its line. Boards from Obsidian's Kanban plugin open too. Needs Ephemeris 1.5 or later (plugin API 1.4).
+
+## Graph view
+
+**Open Graph** draws the notes of the Vault you are in as dots and their links as lines; **Scope** switches to its Domain or all notes, and toggles add attachments or hide notes without links. **Open Local Graph** shows a note and the notes one or two links away. Dots are coloured by Domain and grow with the notes that link to them; hover lights a dot's neighbours, a click opens the note, and **Find a note** lights matching names. The links come from Ephemeris itself, so they follow its link rules exactly, and the layout is remembered per scope. Bundles [d3-force](https://github.com/d3/d3-force) (ISC). Needs Ephemeris 1.5 or later (plugin API 1.4).
 
 ## License
 

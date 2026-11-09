@@ -1,0 +1,82 @@
+/* Classes are prefixed with the plugin id (SPECS 12.2) and use design tokens only. */
+.graph-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  font-family: var(--font-ui);
+  color: var(--text);
+}
+.graph-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+  padding: 12px 16px 8px;
+  border-bottom: 1px solid var(--line);
+}
+.graph-control {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.graph-control select,
+.graph-search {
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+  color: var(--text);
+  font: 14px var(--font-ui);
+}
+.graph-search {
+  margin-left: auto;
+  min-width: 180px;
+}
+.graph-toggle {
+  display: flex;
+  align-items: center;
+  height: 28px;
+  font-size: 13px;
+}
+.graph-toggle input {
+  accent-color: var(--cyan);
+}
+.graph-button {
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+  color: var(--text);
+  font: 13px var(--font-ui);
+  cursor: pointer;
+}
+.graph-canvas-wrap {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--surface);
+}
+.graph-canvas {
+  position: absolute;
+  inset: 0;
+  cursor: grab;
+}
+.graph-canvas:focus-visible,
+.graph-control select:focus-visible,
+.graph-search:focus-visible,
+.graph-button:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+.graph-status {
+  margin: 0;
+  padding: 6px 16px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 12px;
+}

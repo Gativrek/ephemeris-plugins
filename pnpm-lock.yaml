@@ -108,6 +108,25 @@ importers:
         specifier: link:../../../packages/plugin-api
         version: link:../../../packages/plugin-api
 
+  plugins/graph:
+    dependencies:
+      d3-force:
+        specifier: 3.0.0
+        version: 3.0.0
+      d3-quadtree:
+        specifier: 3.0.1
+        version: 3.0.1
+    devDependencies:
+      '@ephemeris-notes/plugin-api':
+        specifier: link:../../../packages/plugin-api
+        version: link:../../../packages/plugin-api
+      '@types/d3-force':
+        specifier: 3.0.10
+        version: 3.0.10
+      '@types/d3-quadtree':
+        specifier: 3.0.6
+        version: 3.0.6
+
   plugins/kanban:
     dependencies:
       '@ephemeris-plugins/inline':
