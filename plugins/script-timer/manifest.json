@@ -1,0 +1,10 @@
+{
+  "id": "script-timer",
+  "name": "Script timer",
+  "version": "0.1.0",
+  "apiVersion": "^1.3.0",
+  "main": "main.js",
+  "styles": "styles.css",
+  "description": "Narration time per heading in the outline, and in total, for notes with script: true.",
+  "author": "Gativrek"
+}
