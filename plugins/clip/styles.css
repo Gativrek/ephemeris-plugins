@@ -1,0 +1,50 @@
+/* Classes are prefixed with the plugin id (SPECS 12.2) and use design tokens only. */
+.clip-box {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-family: var(--font-ui);
+}
+.clip-video {
+  display: block;
+  width: 100%;
+  max-height: 70vh;
+  border-radius: var(--radius-md);
+  background: var(--ink);
+}
+.clip-caption {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+.clip-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.clip-button {
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+  color: var(--text);
+  font: 13px var(--font-ui);
+  cursor: pointer;
+}
+.clip-button:hover {
+  background: var(--surface-hover);
+}
+.clip-button:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
+}
+.clip-status {
+  color: var(--muted);
+  font-size: 13px;
+}
+.clip-problem {
+  margin: 0;
+  color: var(--danger);
+  font-size: 13px;
+}

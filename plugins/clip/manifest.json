@@ -1,0 +1,10 @@
+{
+  "id": "clip",
+  "name": "Clip",
+  "version": "0.1.0",
+  "apiVersion": "^1.0.0",
+  "main": "main.js",
+  "styles": "styles.css",
+  "description": "A segment of a local video in a note, on repeat, with its start and end set from playback.",
+  "author": "Gativrek"
+}
