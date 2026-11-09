@@ -1,0 +1,14 @@
+{
+  "name": "@ephemeris-plugins/inline",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "description": "Shared by Tasks and Kanban: task text as inline Markdown, due dates and their chips. Bundled into each plugin.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  }
+}
