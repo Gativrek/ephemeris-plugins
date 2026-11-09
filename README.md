@@ -10,10 +10,14 @@ Plugins for [Ephemeris](https://github.com/Gativrek/ephemeris-notes), the deskto
 | [Data Plot](plugins/data-plot) | ` ```plot ` | Line, scatter and step plots of CSV files in the Vault, redrawn when the file changes. |
 | [Citations](plugins/citations) | `[@key]` and ` ```bibliography ` | Pandoc citations from BibTeX or CSL-JSON, in IEEE or ABNT, with hover cards and a reference list. |
 | [Flashcards](plugins/flashcards) | `front :: back` and `{{cloze}}` lines | Cards in notes with `flashcards: true`, scheduled with FSRS and reviewed on the desk. |
+| [Tasks](plugins/tasks) | ` ```tasks ` and `due:` dates | Task items across notes, listed by due date and filtered by scope, tag or folder; tick them from the list. |
+| [Clip](plugins/clip) | ` ```clip ` | A segment of a local video in a note, on repeat, with its start and end set from playback. |
+| [Script timer](plugins/script-timer) | `script: true` | Narration time per heading in the outline, and the total at the end of the note. |
+| [Kanban](plugins/kanban) | `kanban: true` | A note as a board: headings are columns, list items are cards; drag, add and tick them. |
 
 Plugins use only the typed plugin API, `@ephemeris-notes/plugin-api`. They run in the app's renderer with no Node access. Plugins are trusted code: install only plugins you trust.
 
-Control Plots and Data Plot share their plot frame (scales, panels, legend, hover and its CSS) through `packages/chart`, a workspace package each of them bundles; it sets each plugin's own class prefix.
+Tasks and Kanban share their inline Markdown renderer and due-date chips through `packages/inline`. Control Plots and Data Plot share their plot frame (scales, panels, legend, hover and its CSS) through `packages/chart`, a workspace package each of them bundles; it sets each plugin's own class prefix.
 
 ## Development
 
@@ -25,6 +29,7 @@ pnpm build        # every plugin into plugins/<id>/dist/
 pnpm test         # unit tests (Vitest)
 pnpm typecheck
 pnpm lint
+pnpm test:e2e     # contract tests in a built Ephemeris (build the app in ../apps/desktop first)
 ```
 
 To try a plugin, build it, then in Ephemeris open Settings > Plugins > Install from Folder… and pick `plugins/<id>/dist`. Reinstalling the same folder replaces the plugin.
@@ -89,6 +94,22 @@ Write `[@groves2013, p. 45]` or `@groves2013` with keys from Zotero (Better BibT
 ## Flashcards
 
 In a note with `flashcards: true` in its frontmatter, a line `front :: back` is a card, and a line with `{{hidden}}` parts is one card per part. **Review Due Cards (This Vault)** and **Review Cards in This Note** open the review on the desk: what is due per note and section, then each card, Space to see the answer, and 1-4 to grade. Scheduling is FSRS ([ts-fsrs](https://github.com/open-spaced-repetition/ts-fsrs) 5.4.2, MIT); the state lives in the Vault's `.vault/plugin-data/flashcards/state.json`, and the only change to a note is a block ID (`^fc-a1b2c3`) on a card's line at its first review. Needs Ephemeris 1.4 or later (plugin API 1.3).
+
+## Tasks
+
+Any task item (`- [ ] text`) in any note is a task; add `due:2026-11-14` for a due date, shown as a chip (the date, **Today** or **Overdue**). A `tasks` block lists tasks from across your notes: empty, the open tasks of this Vault; or with `key: value` lines: `scope` (vault, domain, all), `status`, `due` (overdue, today, week, none, before or after a date), `tag`, `path`, `sort`, `group` and `limit`. Ticking a task in the list writes `[x]` into its note, checking first that the task is still there; clicking its note's name opens the note at the task. **Show Open Tasks (This Vault)** and **(All Vaults)** open the list on the desk with filters as controls. Needs Ephemeris 1.5 or later (plugin API 1.4).
+
+## Clip
+
+A `clip` block plays part of a video from the library: `file:` (a `[[link]]` or a path), `start:` and `end:` (`83.5`, `1:23.5` or `1:02:03`), `loop:` (on by default) and `muted:`. Playback stays inside the segment, and **Set Start** and **Set End** write the current playback time into the block, so a segment is chosen by scrubbing. Ephemeris plays MP4 (H.264) and WebM. Needs Ephemeris 1.0 or later (plugin API 1.0).
+
+## Script timer
+
+In a note with `script: true` in its frontmatter, each heading in the outline shows how long its section takes to read aloud, and the end of the note shows the total ("Script: 1,234 words · 8:14 at 150 wpm"). The speaking rate is a setting (150 words per minute) or the note's own `wpm:`. Headings, code, math, tables, comments and block quotes, which hold directions, are not counted. Needs Ephemeris 1.4 or later (plugin API 1.3).
+
+## Kanban
+
+A note with `kanban: true` in its frontmatter is a board: its headings are columns and the list items under them are cards, with any indented lines belonging to the card. **Open as Board** (a command, and a button at the end of the note) opens the board on the desk beside the note. Drag cards, or move the focused one with Alt+Arrow keys; add cards at a column's foot; tick them by their box. Each change edits the note itself, moving the card's own lines and nothing else, and the board follows edits made in the note. Columns and card text are edited in the note: clicking a card opens it at its line. Boards from Obsidian's Kanban plugin open too. Needs Ephemeris 1.5 or later (plugin API 1.4).
 
 ## License
 
