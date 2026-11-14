@@ -1,16 +1,22 @@
 /**
  * Block bodies (SPECS 13.3): one `name = value` per line. Option names are reserved;
- * every other name is a system, a rational expression in `s` that may use systems
- * from earlier lines. Errors name the line.
+ * every other name is a system, a rational expression in `s` (or in `z`, sampled every
+ * `Ts` seconds) that may use systems from earlier lines. Errors name the line.
  */
 import { add, constant, div, mul, neg, pow, S, sub } from './algebra';
-import { isZero, trim, type Tf } from './poly';
+import { c2d, type Method } from './discretize';
+import { degree, isZero, trim, type Tf } from './poly';
 
 export type Kind = 'bode' | 'step' | 'pzmap';
 
-export interface System {
-  name: string;
+/** A transfer function and its sample time in seconds (null: continuous). */
+export interface Sys {
   tf: Tf;
+  ts: number | null;
+}
+
+export interface System extends Sys {
+  name: string;
   line: number;
 }
 
@@ -22,6 +28,8 @@ export interface Options {
   title: string | null;
   hz: boolean;
   margins: boolean;
+  /** The sample time of systems written in z. */
+  ts: number | null;
 }
 
 export interface Block {
@@ -31,14 +39,17 @@ export interface Block {
 }
 
 export const MAX_SYSTEMS = 6;
-const OPTIONS = new Set(['w', 't', 'grid', 'title', 'units', 'margins', 'show']);
+const OPTIONS = new Set(['w', 't', 'grid', 'title', 'units', 'margins', 'show', 'Ts']);
 const NAME = /^[A-Za-z][A-Za-z0-9_]*$/;
-const RESERVED = new Set(['s', 'tf']);
+const RESERVED = new Set(['s', 'z', 'tf', 'c2d']);
 
 export class BlockError extends Error {}
 const fail = (line: number, message: string): never => {
   throw new BlockError(`Line ${line}: ${message}`);
 };
+
+/** Seconds as written back in messages and legends: 0.1, not 0.1000000001. */
+export const seconds = (ts: number): string => String(Number(ts.toPrecision(6)));
 
 // ---- Expressions -------------------------------------------------------------
 
@@ -70,7 +81,7 @@ function tokenize(text: string, line: number): Token[] {
       i += name[0].length;
       continue;
     }
-    if ('+-*/^()[],'.includes(c)) {
+    if ('+-*/^()[],\'"'.includes(c)) {
       out.push({ kind: 'op', value: c, at: i });
       i++;
       continue;
@@ -80,12 +91,24 @@ function tokenize(text: string, line: number): Token[] {
   return out;
 }
 
+/**
+ * Where a value lives: continuous (ts null) or sampled every ts seconds, with the name
+ * that made it so, for messages. A plain number has none and combines with either.
+ */
+type Domain = { ts: number | null; who: string } | null;
+
+interface Val {
+  tf: Tf;
+  d: Domain;
+}
+
 class Parser {
   private i = 0;
   constructor(
     private readonly tokens: Token[],
     private readonly line: number,
-    private readonly scope: Map<string, Tf>,
+    private readonly scope: Map<string, Sys>,
+    private readonly blockTs: number | null,
   ) {}
 
   private peek(): Token | undefined {
@@ -105,19 +128,42 @@ class Parser {
     return fail(this.line, wanted ? `expected ${wanted}, found '${t.value}'` : `unexpected '${t.value}'`);
   }
 
-  parse(): Tf {
+  parse(): Sys {
     if (!this.tokens.length) fail(this.line, 'empty expression');
     const e = this.expr();
     if (this.i < this.tokens.length) this.unexpected();
-    return e;
+    return { tf: e.tf, ts: e.d?.ts ?? null };
   }
 
-  private expr(): Tf {
+  /** Continuous and discrete systems do not mix, and discrete ones must share Ts. */
+  private join(a: Domain, b: Domain): Domain {
+    if (!a) return b;
+    if (!b) return a;
+    if (a.ts === b.ts) return a;
+    if (a.ts !== null && b.ts !== null)
+      return fail(
+        this.line,
+        `${a.who} and ${b.who} have different sample times (${seconds(a.ts)} s and ${seconds(b.ts)} s)`,
+      );
+    const [disc, cont] = a.ts !== null ? [a, b] : [b, a];
+    if (cont.who === 's') return fail(this.line, 'a discrete system is written in z, not s');
+    return fail(
+      this.line,
+      `${disc.who} is discrete and ${cont.who} is continuous; discretize ${cont.who} with c2d first`,
+    );
+  }
+
+  private combine(a: Val, b: Val, op: (x: Tf, y: Tf) => Tf): Val {
+    const d = this.join(a.d, b.d);
+    return { tf: op(a.tf, b.tf), d };
+  }
+
+  private expr(): Val {
     let left = this.term();
     while (this.isOp('+') || this.isOp('-')) {
       const op = this.tokens[this.i++]!.value;
       const right = this.term();
-      left = op === '+' ? add(left, right) : sub(left, right);
+      left = this.combine(left, right, op === '+' ? add : sub);
     }
     return left;
   }
@@ -128,18 +174,19 @@ class Parser {
     return !!t && (t.kind === 'num' || t.kind === 'name' || (t.kind === 'op' && t.value === '('));
   }
 
-  private term(): Tf {
+  private term(): Val {
     let left = this.juxtaposed();
     for (;;) {
       if (this.isOp('*')) {
         this.i++;
-        left = mul(left, this.juxtaposed());
+        left = this.combine(left, this.juxtaposed(), mul);
       } else if (this.isOp('/')) {
         this.i++;
         const right = this.juxtaposed();
         try {
-          left = div(left, right);
-        } catch {
+          left = this.combine(left, right, div);
+        } catch (err) {
+          if (err instanceof BlockError) throw err;
           fail(this.line, 'division by zero');
         }
       } else return left;
@@ -147,16 +194,17 @@ class Parser {
   }
 
   /** Juxtaposition binds tighter than * and /: 10/(s+1)(s+2) is 10/((s+1)(s+2)). */
-  private juxtaposed(): Tf {
+  private juxtaposed(): Val {
     let left = this.unary();
-    while (this.startsAtom()) left = mul(left, this.power());
+    while (this.startsAtom()) left = this.combine(left, this.power(), mul);
     return left;
   }
 
-  private unary(): Tf {
+  private unary(): Val {
     if (this.isOp('-')) {
       this.i++;
-      return neg(this.unary());
+      const v = this.unary();
+      return { tf: neg(v.tf), d: v.d };
     }
     if (this.isOp('+')) {
       this.i++;
@@ -165,7 +213,7 @@ class Parser {
     return this.power();
   }
 
-  private power(): Tf {
+  private power(): Val {
     const base = this.atom();
     if (!this.isOp('^')) return base;
     this.i++;
@@ -173,15 +221,15 @@ class Parser {
     if (t?.kind !== 'num' || !Number.isInteger(t.value))
       fail(this.line, 'exponents must be whole numbers (s^2, (s+1)^3)');
     this.i++;
-    return pow(base, (t as { value: number }).value);
+    return { tf: pow(base.tf, (t as { value: number }).value), d: base.d };
   }
 
-  private atom(): Tf {
+  private atom(): Val {
     const t = this.peek();
     if (!t) return this.unexpected();
     if (t.kind === 'num') {
       this.i++;
-      return constant(t.value);
+      return { tf: constant(t.value), d: null };
     }
     if (t.kind === 'op' && t.value === '(') {
       this.i++;
@@ -191,24 +239,69 @@ class Parser {
     }
     if (t.kind === 'name') {
       this.i++;
-      if (t.value === 's') return S;
+      if (t.value === 's') return { tf: S, d: { ts: null, who: 's' } };
+      if (t.value === 'z') {
+        if (this.blockTs === null) fail(this.line, 'a system in z needs Ts = … (the sample time in seconds)');
+        return { tf: S, d: { ts: this.blockTs, who: 'z' } };
+      }
       if (t.value === 'tf') return this.tf();
+      if (t.value === 'c2d') return this.c2d();
       const sys = this.scope.get(t.value);
-      if (sys) return sys;
+      if (sys) {
+        // A plain gain (K = 5) fits continuous and discrete systems alike.
+        const gain = sys.ts === null && degree(sys.tf.num) === 0 && degree(sys.tf.den) === 0;
+        return { tf: sys.tf, d: gain ? null : { ts: sys.ts, who: t.value } };
+      }
       return fail(this.line, `unknown name '${t.value}' (systems must be defined on an earlier line)`);
     }
     return this.unexpected();
   }
 
-  /** tf(num, den) with coefficient vectors, highest power first. */
-  private tf(): Tf {
+  /** tf(num, den) with coefficient vectors, highest power first; tf(num, den, Ts) is discrete. */
+  private tf(): Val {
     this.expect('(');
     const num = this.vector();
     this.expect(',');
     const den = this.vector();
+    let ts: number | null = null;
+    if (this.isOp(',')) {
+      this.i++;
+      ts = this.sampleTime('tf(num, den, Ts)');
+    }
     this.expect(')');
     if (isZero(den)) fail(this.line, 'the denominator of tf() is zero');
-    return { num: trim(num), den: trim(den) };
+    return { tf: { num: trim(num), den: trim(den) }, d: { ts, who: 'tf(…)' } };
+  }
+
+  /** c2d(G, Ts) samples a continuous system with a zero-order hold; c2d(G, Ts, tustin) bilinearly. */
+  private c2d(): Val {
+    this.expect('(');
+    const sys = this.expr();
+    this.expect(',');
+    const ts = this.sampleTime('c2d(G, Ts)');
+    let method: Method = 'zoh';
+    if (this.isOp(',')) {
+      this.i++;
+      const quote = this.isOp("'") ? "'" : this.isOp('"') ? '"' : null;
+      if (quote) this.i++;
+      const t = this.peek();
+      const name = t?.kind === 'name' ? t.value.toLowerCase() : null;
+      if (name !== 'zoh' && name !== 'tustin') fail(this.line, 'the c2d method must be zoh or tustin');
+      method = name as Method;
+      this.i++;
+      if (quote) this.expect(quote);
+    }
+    this.expect(')');
+    if (sys.d?.ts != null) fail(this.line, `c2d needs a continuous system, and ${sys.d.who} is discrete`);
+    if (degree(sys.tf.num) > degree(sys.tf.den))
+      fail(this.line, 'c2d needs a proper system (no more zeros than poles)');
+    return { tf: c2d(sys.tf, ts, method), d: { ts, who: 'c2d(…)' } };
+  }
+
+  private sampleTime(form: string): number {
+    const v = this.signedNumber();
+    if (!(v > 0) || !Number.isFinite(v)) fail(this.line, `the sample time in ${form} must be above 0`);
+    return v;
   }
 
   private vector(): number[] {
@@ -235,9 +328,22 @@ class Parser {
   }
 }
 
-export function parseExpression(text: string, scope: Map<string, Tf> = new Map(), line = 1): Tf {
-  return new Parser(tokenize(text, line), line, scope).parse();
+export function parseSystem(
+  text: string,
+  scope: Map<string, Sys> = new Map(),
+  line = 1,
+  ts: number | null = null,
+): Sys {
+  return new Parser(tokenize(text, line), line, scope, ts).parse();
 }
+
+/** The transfer function alone (tests and continuous use). */
+export const parseExpression = (
+  text: string,
+  scope: Map<string, Sys> = new Map(),
+  line = 1,
+  ts: number | null = null,
+): Tf => parseSystem(text, scope, line, ts).tf;
 
 // ---- Block -------------------------------------------------------------------
 
@@ -258,12 +364,16 @@ function onOff(v: string, line: number, key: string): boolean {
   return fail(line, `${key} must be on or off`);
 }
 
+interface Line {
+  line: number;
+  key: string;
+  value: string;
+}
+
 /** Options a block type does not use (w in a step block) are ignored, so blocks can be copied between types. */
 export function parseBlock(source: string): Block {
-  const options: Options = { w: null, t: null, grid: true, title: null, hz: false, margins: false };
-  const scope = new Map<string, Tf>();
-  const systems: System[] = [];
-  let show: Array<{ name: string; line: number }> | null = null;
+  const options: Options = { w: null, t: null, grid: true, title: null, hz: false, margins: false, ts: null };
+  const lines: Line[] = [];
   source.split('\n').forEach((raw, idx) => {
     const line = idx + 1;
     const text = raw.trim();
@@ -271,8 +381,22 @@ export function parseBlock(source: string): Block {
     const eq = text.indexOf('=');
     if (eq < 0) fail(line, 'expected name = value');
     const key = text.slice(0, eq).trim();
-    const value = text.slice(eq + 1).trim();
     if (!NAME.test(key)) fail(line, `'${key}' is not a valid name`);
+    lines.push({ line, key, value: text.slice(eq + 1).trim() });
+  });
+  // Ts first: systems in z may come before it.
+  for (const { line, key, value } of lines) {
+    if (key !== 'Ts') continue;
+    const ts = Number(value);
+    if (!value || !(ts > 0) || !Number.isFinite(ts))
+      fail(line, 'Ts must be a sample time in seconds, like 0.1');
+    options.ts = ts;
+  }
+
+  const scope = new Map<string, Sys>();
+  const systems: System[] = [];
+  let show: Array<{ name: string; line: number }> | null = null;
+  for (const { line, key, value } of lines) {
     if (OPTIONS.has(key)) {
       if (key === 'title') options.title = value || null;
       else if (key === 'grid') options.grid = onOff(value, line, key);
@@ -295,15 +419,15 @@ export function parseBlock(source: string): Block {
           .filter(Boolean)
           .map((name) => ({ name, line }));
       }
-      return;
+      continue;
     }
     if (RESERVED.has(key)) fail(line, `'${key}' cannot name a system`);
     if (scope.has(key)) fail(line, `${key} is already defined`);
-    const tf = parseExpression(value, scope, line);
-    if (isZero(tf.den)) fail(line, `${key} has a zero denominator`);
-    scope.set(key, tf);
-    systems.push({ name: key, tf, line });
-  });
+    const sys = parseSystem(value, scope, line, options.ts);
+    if (isZero(sys.tf.den)) fail(line, `${key} has a zero denominator`);
+    scope.set(key, sys);
+    systems.push({ name: key, ...sys, line });
+  }
   let plotted = systems;
   if (show) {
     plotted = (show as Array<{ name: string; line: number }>).map(({ name, line }) => {

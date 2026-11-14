@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { BlockError, parseBlock } from './parse';
-import { stepSystems } from './views';
+import { legendName, stairs, stepSystems } from './views';
 
 describe('step blocks', () => {
   it('leave out systems with more zeros than poles, and name them', () => {
@@ -22,5 +22,17 @@ describe('step blocks', () => {
     expect(() => stepSystems(parseBlock('L = s+1\nM = s^2\nshow = L, M'))).toThrow(
       'No step response: L, M have more zeros than poles.',
     );
+  });
+});
+
+describe('discrete systems', () => {
+  it('carry their sample time in the legend', () => {
+    expect(legendName({ name: 'Gd', ts: 0.1 })).toBe('Gd (Ts = 0.1 s)');
+    expect(legendName({ name: 'G', ts: null })).toBe('G');
+    expect(legendName({ name: 'H', ts: 0.1 + 0.2 })).toBe('H (Ts = 0.3 s)');
+  });
+
+  it('draw steps as stairs', () => {
+    expect(stairs(0.5, [0, 1, 2])).toEqual({ xs: [0, 0.5, 0.5, 1, 1], ys: [0, 0, 1, 1, 2] });
   });
 });

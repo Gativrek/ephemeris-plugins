@@ -30,3 +30,16 @@
   fill: var(--surface);
   stroke-width: 2;
 }
+
+/* ---- Discrete time ------------------------------------------------------------ */
+.control-plots-nyquist-line,
+.control-plots-unit-circle {
+  fill: none;
+  stroke: var(--muted);
+  stroke-width: 1;
+  stroke-dasharray: 4 3;
+}
+.control-plots-nyquist-label {
+  font: 400 11px var(--font-ui);
+  fill: var(--muted);
+}

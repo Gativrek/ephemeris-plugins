@@ -1,4 +1,8 @@
-/** The three plots (SPECS 13.3): Bode, step and pole-zero map. */
+/**
+ * The three plots (SPECS 13.3): Bode, step and pole-zero map. Discrete systems share them:
+ * their Bode curves end at the Nyquist frequency, their steps are stairs, and the
+ * pole-zero map draws the unit circle.
+ */
 import {
   analyze,
   autoRange,
@@ -7,14 +11,19 @@ import {
   dcGain,
   logspace,
   margins,
+  nyquist,
   stability,
+  stepDiscrete,
   stepResponse,
   type Analysis,
 } from './analysis';
 import {
+  END_LABELS_MAX,
   Figure,
   fixed,
   fmt,
+  html,
+  label,
   linear,
   log,
   MARGIN,
@@ -22,7 +31,7 @@ import {
   type Panel,
   type Series,
 } from '@ephemeris-plugins/chart';
-import { BlockError, type Block } from './parse';
+import { BlockError, seconds, type Block, type System } from './parse';
 import { degree, type Complex } from './poly';
 
 const BODE_POINTS = 600;
@@ -35,8 +44,18 @@ const extent = (vs: number[]): [number, number] => {
   return f.length ? [Math.min(...f), Math.max(...f)] : [-1, 1];
 };
 
-function analyses(block: Block): Array<{ name: string; slot: number; a: Analysis }> {
-  return block.systems.map((s, i) => ({ name: s.name, slot: i + 1, a: analyze(s.tf) }));
+/** A discrete system carries its sample time in the legend and the hover: "Gd (Ts = 0.1 s)". */
+export const legendName = (s: Pick<System, 'name' | 'ts'>): string =>
+  s.ts === null ? s.name : `${s.name} (Ts = ${seconds(s.ts)} s)`;
+
+/** `name` for the legend and hover; `short`, the system's own name, for labels at line ends. */
+function analyses(block: Block): Array<{ name: string; short: string; slot: number; a: Analysis }> {
+  return block.systems.map((s, i) => ({
+    name: legendName(s),
+    short: s.name,
+    slot: i + 1,
+    a: analyze(s.tf, s.ts),
+  }));
 }
 
 // ---- Bode ------------------------------------------------------------------------
@@ -48,11 +67,25 @@ export function renderBode(target: HTMLElement, block: Block): Figure {
   // Ranges and axes in the display unit; the response is always evaluated at ω in rad/s.
   let [lo, hi] = options.w ?? autoRange(systems.map((s) => s.a));
   if (!options.w && options.hz) [lo, hi] = [lo / TWO_PI, hi / TWO_PI];
-  const xs = logspace(lo, hi, BODE_POINTS);
+  const toX = (w: number) => (options.hz ? w / TWO_PI : w);
+  // Each Nyquist frequency in range is a sample, so discrete curves end exactly on it.
+  const nyquists = [
+    ...new Set(systems.filter((s) => s.a.ts !== null).map((s) => toX(nyquist(s.a.ts!)))),
+  ].filter((v) => v >= lo && v <= hi);
+  const xs = [...new Set([...logspace(lo, hi, BODE_POINTS), ...nyquists])].sort((a, b) => a - b);
   const ws = xs.map((x) => (options.hz ? x * TWO_PI : x));
+  /** A discrete response stops at the Nyquist frequency (NaN beyond it, drawn as nothing). */
+  const response = (a: Analysis) => {
+    if (a.ts === null) return bode(a, ws);
+    const nyq = nyquist(a.ts);
+    const upTo = ws.filter((w) => w <= nyq * (1 + 1e-12)).map((w) => Math.min(w, nyq));
+    const r = bode(a, upTo);
+    const pad = new Array<number>(ws.length - upTo.length).fill(NaN);
+    return { magDb: [...r.magDb, ...pad], phaseDeg: [...r.phaseDeg, ...pad] };
+  };
   const responses = systems.map((s) => ({
     ...s,
-    r: bode(s.a, ws),
+    r: response(s.a),
     m: options.margins ? margins(s.a) : null,
   }));
 
@@ -81,7 +114,7 @@ export function renderBode(target: HTMLElement, block: Block): Figure {
     ),
     top: magTop,
     height: panelH,
-    series: responses.map((s): Series => ({ name: s.name, slot: s.slot, xs, ys: s.r.magDb })),
+    series: responses.map((s): Series => ({ name: s.short, slot: s.slot, xs, ys: s.r.magDb })),
     yLabel: 'Magnitude (dB)',
     ...(options.margins ? { refs: [0] } : {}),
   };
@@ -97,7 +130,7 @@ export function renderBode(target: HTMLElement, block: Block): Figure {
     ),
     top: phTop,
     height: panelH,
-    series: responses.map((s): Series => ({ name: s.name, slot: s.slot, xs, ys: s.r.phaseDeg })),
+    series: responses.map((s): Series => ({ name: s.short, slot: s.slot, xs, ys: s.r.phaseDeg })),
     yLabel: 'Phase (°)',
     xLabel: `Frequency (${unit})`,
     ...(options.margins ? { refs: [-180] } : {}),
@@ -105,8 +138,17 @@ export function renderBode(target: HTMLElement, block: Block): Figure {
   fig.drawPanel(mag, options.grid, false);
   fig.drawPanel(phase, options.grid, true);
 
+  // The Nyquist frequency of each sample time, dashed across both panels.
+  for (const v of nyquists) {
+    const cx = x(v);
+    const g = svg('g', {}, 'nyquist');
+    for (const p of [mag, phase])
+      g.append(svg('line', { x1: cx, x2: cx, y1: p.top, y2: p.top + p.height }, 'nyquist-line'));
+    g.append(label(cx - 4, magTop + 13, 'Nyquist', 'nyquist-label', 'end'));
+    fig.svg.append(g);
+  }
+
   if (options.margins) {
-    const toX = (w: number) => (options.hz ? w / TWO_PI : w);
     for (const s of responses) {
       const m = s.m!;
       const marks = svg('g', {}, `margin s${s.slot}`);
@@ -136,7 +178,9 @@ export function renderBode(target: HTMLElement, block: Block): Figure {
       rows: responses.map((s) => ({
         slot: s.slot,
         name: s.name,
-        value: `${fmt(s.r.magDb[i]!)} dB · ${fmt(s.r.phaseDeg[i]!)}°`,
+        value: Number.isNaN(s.r.magDb[i]!)
+          ? 'above Nyquist'
+          : `${fmt(s.r.magDb[i]!)} dB · ${fmt(s.r.phaseDeg[i]!)}°`,
       })),
     }),
     xs,
@@ -165,13 +209,28 @@ export function renderStep(target: HTMLElement, full: Block): Figure {
   const { plotted: block, skipped } = stepSystems(full);
   const { options } = block;
   const systems = analyses(block);
+  // A continuous and a discrete system share the longer window.
   const T = options.t ?? Math.max(...systems.map((s) => autoT(s.a)));
-  const ts = Array.from({ length: STEP_SAMPLES }, (_, i) => (T * i) / (STEP_SAMPLES - 1));
-  const responses = systems.map((s) => ({
-    ...s,
-    y: stepResponse(s.a.tf, T, STEP_SAMPLES),
-    st: stability(s.a),
-  }));
+  // All discrete at one sample time: hover moves sample by sample. Otherwise a fine time
+  // grid, on which a discrete response holds its last sample.
+  const one = systems[0]!.a.ts;
+  const sampled = one !== null && systems.every((s) => s.a.ts === one) ? one : null;
+  const ts =
+    sampled !== null
+      ? Array.from({ length: Math.floor(T / sampled + 1e-9) + 1 }, (_, k) => k * sampled)
+      : Array.from({ length: STEP_SAMPLES }, (_, i) => (T * i) / (STEP_SAMPLES - 1));
+  const responses = systems.map((s) => {
+    const st = stability(s.a);
+    if (s.a.ts === null) {
+      const y = stepResponse(s.a.tf, T, STEP_SAMPLES);
+      return { ...s, st, y, drawn: { xs: ts, ys: y }, k: null };
+    }
+    const h = s.a.ts;
+    const K = Math.floor(T / h + 1e-9);
+    const yk = stepDiscrete(s.a.tf, K + 1);
+    const k = ts.map((t) => Math.min(K, Math.floor(t / h + 1e-9)));
+    return { ...s, st, y: k.map((i) => yk[i]!), drawn: stairs(h, yk), k };
+  });
 
   const panelH = 260;
   const fig = new Figure(target, {
@@ -187,11 +246,12 @@ export function renderStep(target: HTMLElement, full: Block): Figure {
     y: linear(yLo, yHi, MARGIN.top + panelH, MARGIN.top, 5),
     top: MARGIN.top,
     height: panelH,
-    series: responses.map((s): Series => ({ name: s.name, slot: s.slot, xs: ts, ys: s.y })),
+    series: responses.map((s): Series => ({ name: s.short, slot: s.slot, ...s.drawn })),
     yLabel: 'Amplitude',
     xLabel: 'Time (s)',
     refs: finals,
   };
+  const onGrid = new Map(panel.series.map((series, i) => [series, responses[i]!.y]));
   fig.drawPanel(panel, options.grid, true);
   for (const s of responses) {
     const who = systems.length > 1 || skipped.length ? `${s.name}: ` : '';
@@ -203,12 +263,32 @@ export function renderStep(target: HTMLElement, full: Block): Figure {
   fig.crosshair(
     [panel],
     (i) => ({
-      head: `t = ${fmt(ts[i]!)} s`,
-      rows: responses.map((s) => ({ slot: s.slot, name: s.name, value: fmt(s.y[i]!) })),
+      head: sampled !== null ? `k = ${i} · t = ${fmt(ts[i]!)} s` : `t = ${fmt(ts[i]!)} s`,
+      rows: responses.map((s) => ({
+        slot: s.slot,
+        name: s.name,
+        value: s.k && sampled === null ? `${fmt(s.y[i]!)} (k = ${s.k[i]})` : fmt(s.y[i]!),
+      })),
     }),
     ts,
+    (series) => onGrid.get(series) ?? series.ys,
   );
   return fig;
+}
+
+/** Samples y[k] at t = k·h drawn as MATLAB's stairs: each held until the next. */
+export function stairs(h: number, y: number[]): { xs: number[]; ys: number[] } {
+  const xs: number[] = [];
+  const ys: number[] = [];
+  y.forEach((v, k) => {
+    xs.push(k * h);
+    ys.push(v);
+    if (k + 1 < y.length) {
+      xs.push((k + 1) * h);
+      ys.push(v);
+    }
+  });
+  return { xs, ys };
 }
 
 // ---- Pole-zero map ---------------------------------------------------------------
@@ -219,11 +299,23 @@ const rootText = (z: Complex) =>
 export function renderPzmap(target: HTMLElement, block: Block): Figure {
   const { options } = block;
   const systems = analyses(block);
+  const discrete = systems.some((s) => s.a.ts !== null);
+  const continuous = systems.some((s) => s.a.ts === null);
   const all = systems.flatMap((s) => [...s.a.poles, ...s.a.zeros]);
-  const [reLo, reHi] = extent([...all.map((z) => z.re), 0]);
-  const [imLo, imHi] = extent([...all.map((z) => z.im), 0]);
+  // The unit circle is always in view for a discrete system.
+  const circle = discrete ? [-1, 1] : [];
+  const [reLo, reHi] = extent([...all.map((z) => z.re), 0, ...circle]);
+  const [imLo, imHi] = extent([...all.map((z) => z.im), 0, ...circle]);
   const plotH = 300;
-  const fig = new Figure(target, {
+  // With a discrete system the plot is square, as MATLAB's: the frame is narrowed to it.
+  let host = target;
+  if (discrete) {
+    const reserve = systems.length >= 2 && systems.length <= END_LABELS_MAX ? 56 : 16;
+    host = html('div', 'square');
+    target.append(host);
+    host.style.width = `${Math.min(target.clientWidth || 700, MARGIN.left + plotH + reserve)}px`;
+  }
+  const fig = new Figure(host, {
     title: options.title,
     series: systems,
     height: MARGIN.top + plotH + MARGIN.bottomAxis,
@@ -247,9 +339,11 @@ export function renderPzmap(target: HTMLElement, block: Block): Figure {
     refs: [0],
   };
   const g = fig.drawPanel(panel, options.grid, true);
-  // The imaginary axis.
-  if (x.domain[0] <= 0 && x.domain[1] >= 0)
+  // The stability boundaries: the imaginary axis for continuous systems, the unit circle
+  // (dashed) for discrete ones; a mixed block shows both.
+  if (continuous && x.domain[0] <= 0 && x.domain[1] >= 0)
     g.append(svg('line', { x1: x(0), x2: x(0), y1: MARGIN.top, y2: MARGIN.top + plotH }, 'ref'));
+  if (discrete) g.append(svg('circle', { cx: x(0), cy: yScale(0), r: x(1) - x(0) }, 'unit-circle'));
 
   const marks: Array<{ cx: number; cy: number; name: string; slot: number; pole: boolean; z: Complex }> = [];
   for (const s of systems) {

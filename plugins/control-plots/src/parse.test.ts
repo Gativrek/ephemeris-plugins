@@ -25,7 +25,7 @@ describe('expressions', () => {
   });
 
   it('keeps sums over a shared denominator, like MATLAB feedback', () => {
-    const scope = new Map([['L', tf('10/(s(s+1))')]]);
+    const scope = new Map([['L', { tf: tf('10/(s(s+1))'), ts: null }]]);
     expect(parseExpression('L/(1+L)', scope)).toEqual({ num: [10], den: [1, 1, 10] });
     expect(parseExpression('1/(1+L)', scope)).toEqual({ num: [1, 1, 0], den: [1, 1, 10] });
   });
@@ -64,6 +64,7 @@ describe('blocks', () => {
       title: 'Loop shaping',
       hz: true,
       margins: true,
+      ts: null,
     });
   });
 
@@ -84,5 +85,65 @@ describe('blocks', () => {
     expect(() => parseBlock(['A=1', 'B=1', 'C=1', 'D=1', 'E=1', 'F=1', 'G=1'].join('\n'))).toThrow(
       'At most 6',
     );
+  });
+});
+
+describe('discrete time', () => {
+  it('reads tf(num, den, Ts) and expressions in z with Ts, in any order', () => {
+    const b = parseBlock(
+      ['H = tf([0.5], [1 -0.5], 0.2)', 'D = 0.5/(z - 0.5)', 'Ts = 0.1', 'G = 1/(s+1)'].join('\n'),
+    );
+    expect(b.options.ts).toBe(0.1);
+    expect(b.systems.map((s) => [s.name, s.ts])).toEqual([
+      ['H', 0.2],
+      ['D', 0.1],
+      ['G', null],
+    ]);
+    expect(b.systems[1]!.tf).toEqual({ num: [0.5], den: [1, -0.5] });
+  });
+
+  it('discretizes with c2d, by zero-order hold or Tustin', () => {
+    const b = parseBlock(
+      ['G = 1/(s+1)', 'Gd = c2d(G, 0.1)', "Gt = c2d(G, 0.1, 'tustin')", 'Gz = c2d(1/(s+1), 0.1, zoh)'].join(
+        '\n',
+      ),
+    );
+    const [, gd, gt, gz] = b.systems;
+    const p = Math.exp(-0.1);
+    expect(gd!.ts).toBe(0.1);
+    expect(gd!.tf.den[1]).toBeCloseTo(-p, 14);
+    expect(gd!.tf.num).toHaveLength(1);
+    expect(gd!.tf.num[0]).toBeCloseTo(1 - p, 14);
+    expect(gz!.tf).toEqual(gd!.tf);
+    // Tustin: (z + 1)·0.1 / ((2.1)z − 1.9), normalized.
+    expect(gt!.tf.den[1]).toBeCloseTo(-1.9 / 2.1, 14);
+    expect(gt!.tf.num[0]).toBeCloseTo(0.1 / 2.1, 14);
+  });
+
+  it('lets plain gains combine with either', () => {
+    const b = parseBlock(['K = 5', 'Ts = 0.1', 'C = K/(z - 1)', 'G = K/(s+1)'].join('\n'));
+    expect(b.systems.map((s) => s.ts)).toEqual([null, 0.1, null]);
+  });
+
+  it('refuses mixing, missing Ts and bad arguments, naming the line', () => {
+    expect(() => parseBlock('G = 1/(z - 0.5)')).toThrow('Line 1: a system in z needs Ts = …');
+    expect(() => parseBlock('Ts = 0.1\nC = 1/(z-1)\nG = 1/(s+1)\nL = C*G')).toThrow(
+      'Line 4: C is discrete and G is continuous; discretize G with c2d first',
+    );
+    expect(() => parseBlock('A = tf(1, [1 -0.5], 0.1)\nB = tf(1, [1 -0.5], 0.2)\nL = A*B')).toThrow(
+      'Line 3: A and B have different sample times (0.1 s and 0.2 s)',
+    );
+    expect(() => parseBlock('Ts = 0.1\nG = (s+1)/(z-1)')).toThrow(
+      'Line 2: a discrete system is written in z, not s',
+    );
+    expect(() => parseBlock('Ts = 0\nG = 1')).toThrow('Line 1: Ts must be a sample time in seconds');
+    expect(() => parseBlock('G = tf(1, [1 1], -1)')).toThrow('must be above 0');
+    expect(() => parseBlock('G = c2d(s+1, 0.1)')).toThrow('c2d needs a proper system');
+    expect(() => parseBlock('G = c2d(1/(s+1), 0.1, foh)')).toThrow('the c2d method must be zoh or tustin');
+    expect(() => parseBlock('Ts = 0.1\nG = c2d(1/(z-1), 0.1)')).toThrow(
+      'c2d needs a continuous system, and z is discrete',
+    );
+    expect(() => parseBlock('z = 1')).toThrow("'z' cannot name a system");
+    expect(() => parseBlock('c2d = 1')).toThrow("'c2d' cannot name a system");
   });
 });

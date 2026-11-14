@@ -54,6 +54,15 @@ T = L/(1+L)
 show = T
 \`\`\`
 
+**Sample it.** A sampled (discrete-time) system works in the same three blocks. \`c2d\` samples a continuous system, so you can compare a plant with its sampled version:
+
+\`\`\`step
+G  = 4/(s^2 + 2s + 4)
+Gd = c2d(G, 0.1)
+\`\`\`
+
+See **Discrete time** below for writing them directly.
+
 **Add options.** Options use the same \`name = value\` form. This one marks the gain and phase margins:
 
 \`\`\`bode
@@ -63,7 +72,7 @@ margins = on
 
 ## Writing systems
 
-A system is a name, an equals sign and a transfer function: \`G = …\`. Any name works except the option names below, \`s\` and \`tf\`. Write the transfer function either way:
+A system is a name, an equals sign and a transfer function: \`G = …\`. Any name works except the option names below, \`s\`, \`z\`, \`tf\` and \`c2d\`. Write the transfer function either way:
 
 - **As an expression in \`s\`**, the way you would on paper: \`(s + 2)/(s^2 + 3s + 2)\`. You can use \`+ - * /\`, parentheses, whole-number powers (\`s^2\`, \`(s+1)^3\`) and numbers like \`0.5\` or \`1e-3\`.
 - **MATLAB style**, \`tf(num, den)\`, with coefficients from the highest power down: \`tf([1 2], [1 3 2])\` is the same system.
@@ -74,6 +83,29 @@ Writing things side by side multiplies them, and this binds tighter than \`/\`: 
 
 A line starting with \`#\` or \`%\` is a comment. Empty lines are ignored.
 
+## Discrete time
+
+A sampled system has a sample time Ts, in seconds. Write it any of three ways, as in MATLAB:
+
+- **\`tf(num, den, Ts)\`**, with coefficients in descending powers of z: \`tf([0.5], [1 -0.5], 0.1)\`.
+- **An expression in \`z\`**, with the block option \`Ts = 0.1\`: \`D = 0.5/(z - 0.5)\`. The option can be on any line, and every system in z uses it.
+- **\`c2d(G, Ts)\`** samples a continuous system with a zero-order hold, as MATLAB's \`c2d\` does. \`c2d(G, Ts, tustin)\` uses the bilinear (Tustin) transform instead.
+
+\`\`\`bode
+G  = 1/(s(s+1))
+Gd = c2d(G, 0.5)
+\`\`\`
+
+Continuous and discrete systems can share a plot, but not an expression: with \`C\` discrete and \`G\` continuous, \`C*G\` is an error. Sample \`G\` first: \`C*c2d(G, 0.1)\`. Discrete systems combined in one expression must have the same Ts. A plain number, like \`K = 5\`, combines with either.
+
+The legend and the hover show each discrete system's sample time: "Gd (Ts = 0.5 s)".
+
+**Bode.** A discrete response repeats itself above the Nyquist frequency, π/Ts rad/s (or 1/(2Ts) Hz), so its curve ends there, at a dashed line marked "Nyquist". With \`margins = on\`, margins are found up to it.
+
+**Step.** Drawn as stairs, one step per sample. Hover reads the sample number k and its time t = k·Ts. A discrete system is stable when every pole is inside the unit circle (|p| < 1); its final value is G(1). Without \`t\`, the window runs until the slowest pole has decayed to 0.2% (at least 20 samples, at most 10,000).
+
+**Pole-zero map.** The unit circle, dashed, takes the place of the imaginary axis, and the plot is square so the circle is round. A block with both kinds draws both.
+
 ## Options
 
 | Option | Blocks | Meaning |
@@ -82,6 +114,7 @@ A line starting with \`#\` or \`%\` is a comment. Empty lines are ignored.
 | \`units = Hz\` | bode | Frequency in Hz instead of rad/s; \`w\` is then in Hz too. |
 | \`margins = on\` | bode | Gain and phase margins, marked and written under the plot, as MATLAB's \`margin\` reports them. |
 | \`t = 0..20\` | step | Time window. Without it: 6 / (the slowest stable pole's decay rate). |
+| \`Ts = 0.1\` | all | The sample time, in seconds, of systems written in \`z\`. |
 | \`show = T, L\` | all | Draws only these systems, in this order. |
 | \`grid = off\` | all | Hides the gridlines. |
 | \`title = …\` | all | A title above the plot. |
@@ -100,7 +133,5 @@ To name a block in the note's outline, add \`title="Open loop"\` after \`bode\` 
 
 ## Accuracy
 
-The plugin's tests compare it with MATLAB's \`bode\`, \`step\`, \`pole\`, \`zero\` and \`margin\` on fourteen systems: magnitude within 0.01 dB, phase within 0.1°, step samples within 1e-4 and roots within 1e-6. The step response is exact for a step input (a zero-order hold through the matrix exponential).
-
-Continuous time only.
+The plugin's tests compare it with MATLAB's \`bode\`, \`step\`, \`pole\`, \`zero\` and \`margin\` on fourteen continuous and eleven discrete systems: magnitude within 0.01 dB, phase within 0.1°, step samples within 1e-4 and roots within 1e-6. \`c2d\` matches MATLAB's coefficients within 1e-9. The continuous step response is exact for a step input (a zero-order hold through the matrix exponential); the discrete one is the difference equation itself.
 `;

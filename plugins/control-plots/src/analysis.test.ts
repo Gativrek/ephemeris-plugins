@@ -2,12 +2,14 @@ import { describe, expect, it } from 'vitest';
 import {
   analyze,
   autoRange,
+  autoSteps,
   autoT,
   dcGain,
   ImproperError,
   margins,
   phaseDeg,
   stability,
+  stepDiscrete,
   stepResponse,
 } from './analysis';
 import { expm } from './expm';
@@ -124,5 +126,54 @@ describe('autoRange', () => {
   it('goes two decades beyond the roots, in whole decades', () => {
     expect(autoRange([sys('1/(s+2)'), sys('(s+0.05)/(s+300)')])).toEqual([1e-4, 1e5]);
     expect(autoRange([sys('1/s')])).toEqual([1e-2, 1e2]);
+  });
+});
+
+describe('discrete time', () => {
+  const dsys = (text: string, ts = 0.1) => analyze(parseExpression(text, new Map(), 1, ts), ts);
+
+  it('starts the phase on MATLAB branch: an integrator at -90, a zero outside at +180', () => {
+    expect(phaseDeg(dsys('0.1/(z-1)'), 1e-6)).toBeCloseTo(-90, 3);
+    expect(phaseDeg(dsys('0.1/(z-1)'), 0)).toBe(-90);
+    expect(phaseDeg(dsys('(z-1.5)/(z-0.5)'), 1e-6)).toBeCloseTo(180, 3);
+    // Three poles, two at the origin: -540 at the Nyquist frequency.
+    expect(phaseDeg(dsys('1/(z^2 (z-0.5))'), Math.PI / 0.1)).toBeCloseTo(-540, 9);
+  });
+
+  it('takes a zero on the circle at -1 from below at the Nyquist frequency', () => {
+    expect(phaseDeg(dsys('(z+1)/(z^2)'), Math.PI / 0.1)).toBeCloseTo(-360 + 90, 9);
+  });
+
+  it('classifies stability by |p| and picks the window in samples', () => {
+    expect(stability(dsys('1/(z-0.5)'))).toBe('stable');
+    expect(stability(dsys('1/(z-1)'))).toBe('marginal');
+    expect(stability(dsys('1/(z^2+1)'))).toBe('marginal');
+    expect(stability(dsys('1/(z-1.01)'))).toBe('unstable');
+    // 0.5^k < 0.002 from k = 9: the minimum of 20 samples.
+    expect(autoSteps(dsys('1/(z-0.5)'))).toBe(20);
+    expect(autoSteps(dsys('1/(z-0.98)'))).toBe(308);
+    expect(autoT(dsys('1/(z-0.98)', 0.05))).toBeCloseTo(15.4, 12);
+    expect(autoSteps(dsys('1/(z-1)'))).toBe(100);
+    expect(autoSteps(dsys('1/(z-0.9999999)', 1))).toBe(10000);
+    expect(dcGain(dsys('0.5/(z-0.5)'))).toBe(1);
+  });
+
+  it('steps by the difference equation, delays included', () => {
+    const y = stepDiscrete({ num: [0.5], den: [1, -0.5] }, 6);
+    y.forEach((v, k) => expect(v).toBeCloseTo(k === 0 ? 0 : 1 - 0.5 ** k, 14));
+    expect(stepDiscrete({ num: [1], den: [1, 0, 0] }, 4)).toEqual([0, 0, 1, 1]);
+    expect(stepDiscrete({ num: [2, 0], den: [1, 0] }, 3)).toEqual([2, 2, 2]);
+    expect(() => stepDiscrete({ num: [1, 0], den: [1] }, 3)).toThrow(ImproperError);
+  });
+
+  it('ends the automatic range at the Nyquist frequency', () => {
+    expect(autoRange([dsys('0.5/(z-0.5)')])).toEqual([0.01, Math.PI / 0.1]);
+    expect(autoRange([sys('1/(s+1)'), dsys('0.5/(z-0.5)', 0.001)])).toEqual([0.01, Math.PI / 0.001]);
+  });
+
+  it('finds the gain margin at the Nyquist frequency', () => {
+    const m = margins(dsys('0.5/(z-0.5)'));
+    expect(m.wcg).toBe(Math.PI / 0.1);
+    expect(m.gmDb).toBeCloseTo(20 * Math.log10(3), 9);
   });
 });

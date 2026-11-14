@@ -7,7 +7,8 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { analyze, bode, margins, stepResponse } from '../src/analysis';
+import { analyze, bode, margins, stepDiscrete, stepResponse } from '../src/analysis';
+import { c2d, type Method } from '../src/discretize';
 import type { Complex } from '../src/poly';
 
 const refs = join(dirname(fileURLToPath(import.meta.url)), 'refs');
@@ -24,10 +25,34 @@ const systems = readFileSync(join(refs, 'systems.csv'), 'utf8')
   .split(/\r?\n/)
   .slice(1)
   .map((row) => {
-    const [name, num, den, T] = row.split(',');
+    const [name, num, den, T, Ts, cnum, cden, method] = row.split(',');
     const vec = (s: string) => s.split(' ').map(Number);
-    return { name: name!, tf: { num: vec(num!), den: vec(den!) }, T: Number(T) };
+    return {
+      name: name!,
+      tf: { num: vec(num!), den: vec(den!) },
+      T: Number(T),
+      ts: Number(Ts) > 0 ? Number(Ts) : null,
+      source: cnum ? { tf: { num: vec(cnum), den: vec(cden!) }, method: method as Method } : null,
+    };
   });
+
+/** Coefficients aligned on the constant term, against the largest reference coefficient. */
+function coefficientError(got: number[], want: number[]): number {
+  const n = Math.max(got.length, want.length);
+  const pad = (p: number[]) => [...new Array<number>(n - p.length).fill(0), ...p];
+  const g = pad(got);
+  const w = pad(want);
+  const scale = Math.max(...w.map(Math.abs));
+  return Math.max(...w.map((v, i) => Math.abs(g[i]! - v))) / scale;
+}
+
+describe('c2d', () => {
+  it.each(systems.filter((s) => s.source))('$name: coefficients within 1e-9 relative', (s) => {
+    const d = c2d(s.source!.tf, s.ts!, s.source!.method);
+    expect(coefficientError(d.num, s.tf.num)).toBeLessThan(1e-9);
+    expect(coefficientError(d.den, s.tf.den)).toBeLessThan(1e-9);
+  });
+});
 
 /** Matches each expected root to the nearest unused computed one. */
 function maxRootError(got: Complex[], want: Complex[]): number {
@@ -48,11 +73,13 @@ function maxRootError(got: Complex[], want: Complex[]): number {
 const sameOrBothNonFinite = (got: number, want: number) =>
   Number.isNaN(want) ? Number.isNaN(got) : !Number.isFinite(want) ? got === want : Number.isFinite(got);
 
-describe.each(systems)('$name', ({ name, tf, T }) => {
-  const a = analyze(tf);
+describe.each(systems)('$name', ({ name, tf, T, ts }) => {
+  const a = analyze(tf, ts);
 
   it('bode: magnitude within 0.01 dB, phase within 0.1°', () => {
-    const ref = csv(`${name}.bode.csv`);
+    // Where the response is numerically zero (a Tustin zero at z = -1, at the Nyquist
+    // frequency) neither magnitude nor phase is defined, and MATLAB's -344 dB is rounding.
+    const ref = csv(`${name}.bode.csv`).filter((row) => row[1]! > -200);
     const r = bode(
       a,
       ref.map((row) => row[0]!),
@@ -69,7 +96,7 @@ describe.each(systems)('$name', ({ name, tf, T }) => {
 
   it('step: samples within 1e-4 relative', () => {
     const ref = csv(`${name}.step.csv`);
-    const y = stepResponse(tf, T, ref.length);
+    const y = ts === null ? stepResponse(tf, T, ref.length) : stepDiscrete(tf, ref.length);
     const scale = Math.max(1, ...ref.map((row) => Math.abs(row[1]!)));
     const worst = Math.max(...ref.map((row, i) => Math.abs(y[i]! - row[1]!) / scale));
     expect(worst).toBeLessThan(1e-4);
