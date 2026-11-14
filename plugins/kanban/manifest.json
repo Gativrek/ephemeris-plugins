@@ -1,7 +1,7 @@
 {
   "id": "kanban",
   "name": "Kanban",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "apiVersion": "^1.4.0",
   "main": "main.js",
   "styles": "styles.css",

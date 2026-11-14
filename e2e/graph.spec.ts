@@ -68,10 +68,14 @@ test('the Vault graph matches the core link graph; search and a click open notes
     'true',
   );
 
+  // The core's graph, without templates (`_templates/`), which the plugin leaves out.
   const g = await linkGraph(page, { kind: 'vault', vaultPath: VAULT });
-  const noteLinks = g.links.filter((l) => l.to.endsWith('.md')).length;
+  const tpl = (p: string) => p.split('/').includes('_templates');
+  const notes = g.notes.filter((n) => !tpl(n.path));
+  expect(notes.length).toBeLessThan(g.notes.length);
+  const noteLinks = g.links.filter((l) => l.to.endsWith('.md') && !tpl(l.from) && !tpl(l.to)).length;
   const status = view.locator('.graph-status');
-  await expect(status).toHaveText(`${g.notes.length} notes, ${noteLinks} links`);
+  await expect(status).toHaveText(`${notes.length} notes, ${noteLinks} links`);
 
   // Search lights matches; Enter opens the first.
   await view.getByLabel('Find a note in the graph').fill('intro');
@@ -100,7 +104,7 @@ test('the Vault graph matches the core link graph; search and a click open notes
     path.join(ctx.lib, ...`${VAULT}/Notes/Graph Test.md`.split('/')),
     '# Graph test\n\nSee [[Intro]].\n',
   );
-  await expect(status).toHaveText(`${g.notes.length + 1} notes, ${noteLinks + 1} links`, { timeout: 15_000 });
+  await expect(status).toHaveText(`${notes.length + 1} notes, ${noteLinks + 1} links`, { timeout: 15_000 });
 });
 
 test('a local graph shows the note and its neighbours, to the chosen depth', async () => {
