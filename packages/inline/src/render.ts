@@ -37,9 +37,12 @@ export function renderInline(
   if (at < text.length) parent.append(text.slice(at));
 }
 
-/** The due date as a chip: "Overdue · 1 Nov", "Today" or "10 Nov" (text, not colour alone). */
-export function dueChip(due: string, today: string, prefix: string): HTMLElement {
-  const state = dueState(due, today);
+/**
+ * The due date as a chip: "Overdue · 1 Nov", "Today" or "10 Nov" (text, not colour alone).
+ * A done item is never overdue or due today: its chip is the plain date (`is-done`).
+ */
+export function dueChip(due: string, today: string, prefix: string, done = false): HTMLElement {
+  const state = done ? 'done' : dueState(due, today);
   const date = formatDue(due, today);
   const chip = node('span', state === 'overdue' ? `Overdue · ${date}` : state === 'today' ? 'Today' : date);
   chip.className = `${prefix}-due is-${state}`;

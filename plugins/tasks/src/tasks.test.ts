@@ -56,13 +56,18 @@ describe('parseTask', () => {
 });
 
 describe('the inline due chip pattern', () => {
-  const chips = (line: string) => [...line.matchAll(DUE_INLINE)].map((m) => m[1]);
+  const chips = (line: string) => [...line.matchAll(DUE_INLINE)].map((m) => m[2]);
   it('matches due dates on task lines only', () => {
     expect(chips('- [ ] pay rent due:2026-12-01')).toEqual(['2026-12-01']);
     expect(chips('2. [x] due:2026-12-01 first word')).toEqual(['2026-12-01']);
     expect(chips('The form says due:2026-12-01.')).toEqual([]);
     expect(chips('- a list item due:2026-12-01')).toEqual([]);
     expect(chips('- [ ] overdue:2026-12-01')).toEqual([]);
+  });
+  it('tells open tasks from ticked ones', () => {
+    const box = (line: string) => [...line.matchAll(DUE_INLINE)].map((m) => m[1]);
+    expect(box('- [ ] pay rent due:2026-11-01')).toEqual([' ']);
+    expect(box('- [X] paid rent due:2026-11-01')).toEqual(['X']);
   });
 });
 

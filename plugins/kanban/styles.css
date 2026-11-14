@@ -38,7 +38,9 @@
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  flex: 1;
+  /* As tall as the tallest lane (its scrollbar under the cards, not at the window's
+     foot), and no taller than the view. */
+  flex: 0 1 auto;
   min-height: 0;
   overflow-x: auto;
   padding-bottom: 8px;
@@ -46,7 +48,9 @@
 .kanban-lane {
   display: flex;
   flex-direction: column;
-  flex: 0 0 272px;
+  /* Lanes share the width, between 220px and 320px; more scroll sideways. */
+  flex: 1 0 220px;
+  max-width: 320px;
   max-height: 100%;
   border-radius: var(--radius-lg);
   background: var(--surface-side);

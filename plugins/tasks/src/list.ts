@@ -32,7 +32,8 @@ export function el<K extends keyof HTMLElementTagNameMap>(
 }
 
 /** The due date as a chip: "Overdue · 1 Nov", "Today" or "10 Nov" (text, not colour alone). */
-export const dueChip = (due: string, today: string): HTMLElement => chip(due, today, 'tasks');
+export const dueChip = (due: string, today: string, done = false): HTMLElement =>
+  chip(due, today, 'tasks', done);
 
 const CHANGED = 'This task changed in its note, so it was not ticked.';
 
@@ -143,7 +144,7 @@ export function mountList(ctx: PluginContext, root: HTMLElement, opts: ListOptio
         'tasks',
       );
       li.append(box, text);
-      if (t.due) li.append(dueChip(t.due, today));
+      if (t.due) li.append(dueChip(t.due, today, t.done));
       li.append(noteLink(t.path, t.line, withVault));
       ul.append(li);
     }

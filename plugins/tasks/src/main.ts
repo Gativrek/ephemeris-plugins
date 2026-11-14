@@ -42,7 +42,8 @@ class Tasks implements Plugin {
     ctx.inline.register({
       id: 'due',
       match: DUE_INLINE,
-      widget: (m) => dueChip(m.groups[1]!, localDate(new Date())),
+      // A ticked task's date is history, not a deadline: no Overdue on it.
+      widget: (m) => dueChip(m.groups[2]!, localDate(new Date()), m.groups[1] !== ' '),
     });
 
     ctx.views.register('list', {

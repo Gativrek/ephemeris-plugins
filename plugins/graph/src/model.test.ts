@@ -34,6 +34,19 @@ describe('buildGraph', () => {
     expect(d.nodes.find((n) => n.id === 'Academic/V/B.md')!.inbound).toBe(1);
     expect(d.edges).toHaveLength(3);
   });
+  it('leaves templates out, and links to them', () => {
+    const withTemplate: LinkGraph = {
+      notes: [...G.notes, { path: 'Academic/V/_templates/Daily.md', title: '{{date}}' }],
+      links: [
+        ...G.links,
+        { from: 'Academic/V/_templates/Daily.md', to: 'Academic/V/A.md', count: 1 },
+        { from: 'Academic/V/B.md', to: 'Academic/V/_templates/Daily.md', count: 1 },
+      ],
+    };
+    const d = buildGraph(withTemplate, { attachments: false, orphans: true });
+    expect(ids(d).some((id) => id.includes('_templates'))).toBe(false);
+    expect(d.edges).toHaveLength(3);
+  });
   it('adds attachments, and leaves orphans out, on request', () => {
     const d = buildGraph(G, { attachments: true, orphans: false });
     expect(ids(d)).toContain('Academic/V/_attachments/paper.pdf');

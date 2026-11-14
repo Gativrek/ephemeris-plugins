@@ -45,6 +45,12 @@ export const isNote = (path: string) => /\.md$/i.test(path);
 /** A file's name without its folder or `.md`. */
 export const baseName = (path: string) => path.split('/').pop()!.replace(/\.md$/i, '');
 
+/**
+ * Templates (`_templates/`, SPECS 4.5) are blueprints, not notes of the Vault: their
+ * `{{date}}` titles and placeholder links stay out of the graph.
+ */
+export const isTemplate = (path: string): boolean => path.split('/').includes('_templates');
+
 export function buildGraph(graph: LinkGraph, opts: GraphOptions): Drawn {
   const nodes = new Map<string, GraphNode>();
   const add = (id: string, title: string, inScope: boolean) => {
@@ -58,11 +64,11 @@ export function buildGraph(graph: LinkGraph, opts: GraphOptions): Drawn {
         inbound: 0,
       });
   };
-  for (const n of graph.notes) add(n.path, n.title || baseName(n.path), true);
+  for (const n of graph.notes) if (!isTemplate(n.path)) add(n.path, n.title || baseName(n.path), true);
   const edges: GraphEdge[] = [];
   for (const l of graph.links) {
     if (!isNote(l.to) && !opts.attachments) continue;
-    if (!nodes.has(l.from)) continue;
+    if (!nodes.has(l.from) || isTemplate(l.to)) continue;
     add(l.to, isNote(l.to) ? baseName(l.to) : l.to.split('/').pop()!, false);
     edges.push({ source: l.from, target: l.to, count: l.count });
   }

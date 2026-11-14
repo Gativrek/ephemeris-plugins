@@ -13,9 +13,10 @@ export const TASK_LINE = String.raw`^[ \t]*(?:[-*+]|\d{1,9}[.)])[ \t]+\[([ xX])\
 /**
  * A due date on a task line, for the inline chip (matched line by line, so `^` is the line
  * start). The lookbehind keeps it to task items: `due:` elsewhere in a note stays text.
+ * Group 1 is the checkbox character, group 2 the date.
  */
 export const DUE_INLINE =
-  /(?<=^[ \t]*(?:[-*+]|\d{1,9}[.)])[ \t]+\[[ xX]\][ \t].*?)(?<=^|\s)due:(\d{4}-\d{2}-\d{2})(?=\s|$)/g;
+  /(?<=^[ \t]*(?:[-*+]|\d{1,9}[.)])[ \t]+\[([ xX])\][ \t].*?)(?<=^|\s)due:(\d{4}-\d{2}-\d{2})(?=\s|$)/g;
 
 const TAG = /(?:^|\s)#([\p{L}\p{N}_/-]+)/gu;
 

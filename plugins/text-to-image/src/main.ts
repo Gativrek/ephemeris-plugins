@@ -36,6 +36,8 @@ class TextToImage implements Plugin {
   private readonly mounted = new Set<Mounted>();
   private settingsReg: Disposable | null = null;
   private profileKey = '';
+  /** The profiles without problems, as last registered. */
+  private usable: Summary[] = [];
   private changeTimer: ReturnType<typeof setTimeout> | null = null;
 
   async onload(ctx: PluginContext): Promise<void> {
@@ -72,6 +74,7 @@ class TextToImage implements Plugin {
   /** The default-profile options list the installed profiles, so it is re-registered when they change. */
   private registerSettings(profiles: Summary[]): void {
     this.profileKey = JSON.stringify(profiles.map((p) => [p.id, p.name]));
+    this.usable = profiles.filter((p) => !p.problem);
     this.settingsReg?.dispose();
     const st = strings.settings;
     this.settingsReg = this.ctx.settings.register({
@@ -103,7 +106,14 @@ class TextToImage implements Plugin {
 
   private async changed(): Promise<void> {
     this.store.invalidate();
+    const hadUsable = this.usable.length > 0;
     const profiles = await this.store.summaries();
+    // The first usable profile becomes the default when there was none: after Add Example
+    // Profile, unnamed blocks draw at once. A "None" chosen among profiles stays.
+    const usable = profiles.filter((p) => !p.problem);
+    if (!hadUsable && usable.length && !this.ctx.settings.get<string>('defaultProfile'))
+      await this.ctx.settings.set('defaultProfile', usable[0]!.id);
+    this.usable = usable;
     if (JSON.stringify(profiles.map((p) => [p.id, p.name])) !== this.profileKey)
       this.registerSettings(profiles);
     else this.manager.refresh();

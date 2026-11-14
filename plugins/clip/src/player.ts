@@ -117,6 +117,8 @@ export function renderClip(
   });
   video.addEventListener('loadedmetadata', () => {
     duration = Number.isFinite(video.duration) ? video.duration : null;
+    // Never wider than the video itself: a small clip stays sharp instead of stretched.
+    if (video.videoWidth) video.style.maxWidth = `${video.videoWidth}px`;
     if (video.currentTime < clip.start) video.currentTime = clip.start;
     setCaption();
   });
@@ -127,6 +129,7 @@ export function renderClip(
         ? `Ephemeris plays MP4 (H.264) and WebM video; ${name} is in a format it cannot play.`
         : `${name} could not be played.`;
     showProblems([...problems, message]);
+    noPlayer();
   });
 
   // ---- Set Start and Set End -------------------------------------------------------------
@@ -154,10 +157,18 @@ export function renderClip(
   function say(text: string) {
     status.textContent = text;
   }
+  /** No video to play: the problem says why; no empty player or buttons under it. */
+  function noPlayer() {
+    video.hidden = true;
+    box.querySelector('.clip-bar')?.toggleAttribute('hidden', true);
+  }
 
   void locate(ctx, clip, block.note.path).then((path) => {
     if (host.signal.aborted) return;
-    if (!path) return showProblems([...problems, `No video at ${clip.file}.`]);
+    if (!path) {
+      showProblems([...problems, `No video at ${clip.file}.`]);
+      return noPlayer();
+    }
     name = path.split('/').pop()!;
     setCaption();
     // The fragment shows the first frame of the clip before it plays.

@@ -12,6 +12,10 @@
   border-radius: var(--radius-md);
   background: var(--ink);
 }
+.clip-video[hidden],
+.clip-bar[hidden] {
+  display: none;
+}
 .clip-caption {
   margin: 0;
   color: var(--muted);

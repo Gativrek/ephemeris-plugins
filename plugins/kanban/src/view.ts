@@ -222,7 +222,7 @@ export function renderBoardView(
     );
     body.append(words);
     const meta = el('div', 'meta');
-    if (card.due) meta.append(dueChip(card.due, today, 'kanban'));
+    if (card.due) meta.append(dueChip(card.due, today, 'kanban', card.done === true));
     if (card.extra) meta.append(el('span', 'extra', `+${card.extra} ${card.extra === 1 ? 'line' : 'lines'}`));
     if (meta.childElementCount) body.append(meta);
     face.append(body);
